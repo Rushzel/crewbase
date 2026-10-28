@@ -1,0 +1,43 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      NEXT_PUBLIC_SUPABASE_URL: http://127.0.0.1:54321
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 2.122.0
+      - name: Start Supabase (migrations and demo seed)
+        run: supabase start -x vector,logflare,imgproxy,edge-runtime,realtime,supavisor
+      - name: Database tests (pgTAP)
+        run: supabase test db
+      - name: Local keys for the app
+        run: |
+          supabase status -o env | grep -E '^(PUBLISHABLE_KEY|SECRET_KEY)=' | sed -e 's/^PUBLISHABLE_KEY=/NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=/' -e 's/^SECRET_KEY=/SUPABASE_SECRET_KEY=/' | tr -d '"' >> "$GITHUB_ENV"
+
+      - run: npm run build
+      - run: npx playwright install --with-deps chromium
+      - name: End-to-end tests (Playwright)
+        run: npx playwright test
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-traces
+          path: test-results/

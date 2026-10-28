@@ -6,7 +6,10 @@ Updated 28 Oct 2026.
 - Planning: codebase overview, specification, data model, acceptance criteria, task list (`docs/`).
 - Skeleton: Next.js 16.4 (App Router, TypeScript, Tailwind CSS 4), Supabase local stack in Docker, Vitest, Playwright.
 - Database, 6 migrations: businesses and roles; sites and PostGIS geofences; time core with evidence, face enrollment and liveness challenges; scheduling and payroll; invitations, analytics and output tracking; demo data with a nightly reset.
-- Database tests: **171 pgTAP tests pass** (`npx supabase test db`), covering acceptance criteria 1 to 26, 28 to 43, 45 and 46.
+- Screens: home with demo buttons, sign-in, sign-up, business setup, Today (clock with location and face steps), History, Requests, People, Schedule, Payslips (with PDF), Payroll, Analytics, Face check enrollment, Settings.
+- Continuous integration workflow and keep-alive workflow (files only; they run once the repository is on GitHub).
+- README with the reasons for each rule, and the case study.
+- **Tests: 171 database, 17 unit, 13 end-to-end, all passing. Production build passes.**
 
 ## Test results
 | File | Tests | Covers |
@@ -17,6 +20,8 @@ Updated 28 Oct 2026.
 | `04_face` | 21 | Consent, supervised enrollment, unreadable embeddings, one-use and expiring challenges, liveness order and timing, wrong face, replays |
 | `05_payroll` | 36 | Review and lock steps, locked periods, hand-worked pay for hourly, daily (absence, tardiness) and mid-period raise, totals, void and reissue, privacy |
 | `06_analytics_demo` | 23 | Hand-checked measures, "not enough data", team-only analytics, demo account protection, demo reset |
+| Vitest (`src/lib`) | 17 | Formatting, contrast check, analytics flags and forecast |
+| Playwright (`e2e`) | 13 | Demo sign-in for all six accounts, navigation by role, redirects, device clock set to 2030, breaks, flagged punch outside the fence, phone width |
 
 ## Bugs the tests caught (and fixed)
 1. Deleting an entry tried to update append-only evidence through a foreign key. Evidence now keeps the entry ID as a plain value.
@@ -24,6 +29,7 @@ Updated 28 Oct 2026.
 3. The payslip totals check read a column that only exists on the lines table.
 4. The "no payslip" list skipped invited members.
 5. The demo reset failed in four ways during cascading deletes (audit rows, the output same-day rule, append-only tables, reviewer foreign keys). Each rule now recognises "this whole business is being deleted".
+6. The demo seed indexed sample reasons by a row number counted before `limit`, which broke the nightly reset on some days.
 
 ## Decisions to review
 1. **Product name "Crewbase"** (placeholder, set in one constant: `src/lib/brand.ts`).
@@ -35,9 +41,19 @@ Updated 28 Oct 2026.
 7. Sample deductions use generic names (social security, health insurance, housing fund, withholding tax) with illustrative rates labelled "(sample rate)", not real agency names or current legal rates.
 8. Demo sign-ins: `owner.harbor@crewbase.example`, `manager.harbor@…`, `employee.harbor@…` (and `.northgate`), password `crewbase-demo`. They can't change their email or password.
 9. The original capstone's real names, company and data are not used anywhere. All demo people are invented.
+10. The liveness action "smile" became "open mouth": the face library reports mouth opening reliably but has no smile gesture.
+11. Face match threshold default 0.60 (cosine similarity). **Not yet calibrated on real cameras**; it's a per-business setting.
+12. "Turn left" uses the library's "facing left" gesture. Whether that means the person's left or the camera's left hasn't been checked on a real camera; if it's mirrored, swap the two mappings in `src/lib/face.ts`.
+13. Payroll opens on the newest period (usually the open one).
 
 ## Blockers
 - None for local work. Pushing, Supabase cloud and Vercel wait for Kidd (see `../portfolio-site/docs/ACCOUNTS-CHECKLIST.md`).
 
+## Not done yet
+- Manual liveness spoof test (criterion 27): needs a person, a camera and made-up face photos.
+- Screens for editing roles, deduction rules, members and rates, invitations, and drawing geofences on a map. The database functions and policies for all of them exist and are tested.
+- Real-camera check of the face flow (see decisions 11 and 12).
+
 ## Next step
-Build the screens (sign-in, Today with the location and face steps, History, Requests, People, Schedule, Payroll, Analytics, Settings), then Playwright tests for criteria 4, 8, 27 (manual), and 44.
+1. Kidd: review decisions above and in `docs/SPEC.md`; try the demo locally (`npx supabase start`, `npm run dev`).
+2. Build the remaining settings screens, then the coach manager and the medicine tracker.

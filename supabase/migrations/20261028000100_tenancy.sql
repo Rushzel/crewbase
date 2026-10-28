@@ -228,9 +228,14 @@ grant execute on all functions in schema private to authenticated;
 -- Audit and append-only enforcement.
 ------------------------------------------------------------------------------
 
+-- Append-only tables. The one exception: rows may go when their whole business is deleted
+-- (the cascade runs after the business row is gone), so a demo business can be reset.
 create function private.block_change()
-returns trigger language plpgsql as $$
+returns trigger language plpgsql security definer set search_path = '' as $$
 begin
+  if tg_op = 'DELETE' and not exists (select 1 from public.organizations where id = old.org_id) then
+    return old;
+  end if;
   raise exception '% is append-only', tg_table_name using errcode = '42501';
 end $$;
 

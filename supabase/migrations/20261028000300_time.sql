@@ -77,11 +77,13 @@ create table public.embedding_fingerprints (
 );
 
 -- Evidence for every punch attempt, including blocked ones (entry_id is null when blocked).
+-- entry_id and challenge_id are plain values, not foreign keys: evidence must outlive a deleted
+-- entry, and a foreign key would try to update this append-only table when one is deleted.
 create table public.clock_events (
   id bigint generated always as identity primary key,
   org_id uuid not null references public.organizations (id) on delete cascade,
   membership_id uuid not null references public.memberships (id) on delete cascade,
-  entry_id uuid references public.time_entries (id) on delete set null,
+  entry_id uuid,
   site_id uuid references public.sites (id) on delete set null,
   kind public.punch_kind not null,
   server_time timestamptz not null default now(),
@@ -97,7 +99,7 @@ create table public.clock_events (
   travel_kmh real,
   face_similarity real,
   liveness_passed boolean,
-  challenge_id uuid references public.clock_challenges (id) on delete set null,
+  challenge_id uuid,
   face_result text,
   user_agent text
 );

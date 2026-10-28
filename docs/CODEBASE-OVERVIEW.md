@@ -2,7 +2,7 @@
 
 Written 28 Oct 2026, before any change, as the starting point for the new workforce system.
 
-- **Source read:** `github.com/rszl/Jedskies`, branch `main`, commit `448a51b` (22 Oct 2025). This is one commit ahead of the local copy in `C:\xampp\htdocs\Jedskies`.
+- **Source read:** `github.com/Rushzel/Jedskies` (formerly `rszl/Jedskies`), branch `main`, commit `448a51b` (22 Oct 2025), the latest commit on the account's only public repository. This is one commit ahead of the local copy in `C:\xampp\htdocs\Jedskies`.
 - **Other branch:** `feature/payroll-process` (June 2025) is older. Its incentives and man-days reports are already in `main`.
 - **Size:** 293 tracked files, about 30,000 lines once lock files and model weights are excluded.
 - **Method:** every route, model, migration, service, middleware and scheduled command was read in full. The large Blade views were read where they hold logic: clock-in, face enrollment, maps and analytics.
@@ -142,4 +142,4 @@ These are the reasons the new system moves the rules into the database. Each has
 - I didn't run the original application (that needs PHP and MySQL, or Docker). The behaviour described comes from reading the code.
 - Some Blade views are 900 to 1,100 lines long. I read their script sections and the parts named here, not every line of markup.
 - **Documentation read alongside the code:** the final capstone manuscript (July 2025, a four-person team project), the operations and payroll process notes, and the user acceptance test report (cycle 2, September 2025).
-- **The test report doesn't match this code.** It describes a Human Resources Manager role, account lockout after 5 failed attempts, a 30-minute idle timeout, and a payroll module with absence, tardiness and government contribution deductions, tested on a Vercel deployment. None of that is in `main`. Either a later version lives in another repository, or the report covers planned features. To be confirmed by Kidd.
+- **The test report doesn't match this code.** It describes a Human Resources Manager role, account lockout after 5 failed attempts, a 30-minute idle timeout, and a payroll module with absence, tardiness and government contribution deductions, tested on a Vercel deployment. None of that is in `main` or in the other branch, and `Rushzel/Jedskies` is the account's only public repository. Either a later version lives in a private repository, or the report covers planned features. To be confirmed by Kidd.

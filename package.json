@@ -6,14 +6,24 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "typecheck": "next typegen && tsc --noEmit",
+    "test": "vitest run",
+    "test:db": "supabase test db",
+    "test:e2e": "playwright test",
+    "models": "node scripts/copy-face-models.mjs",
+    "postinstall": "node scripts/copy-face-models.mjs",
+    "prebuild": "node scripts/copy-face-models.mjs"
   },
   "dependencies": {
+    "@react-pdf/renderer": "^4.9.0",
     "@supabase/ssr": "^0.12.7",
     "@supabase/supabase-js": "^2.118.0",
+    "@vladmandic/human": "^3.3.6",
     "next": "16.4.3",
     "react": "19.3.0",
     "react-dom": "19.3.0",
+    "server-only": "^0.0.1",
     "zod": "^4.6.7"
   },
   "devDependencies": {

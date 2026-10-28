@@ -254,7 +254,7 @@ declare
 begin
   if v_member is null then raise exception 'Not a member of this business' using errcode = '42501'; end if;
   select array_agg(a order by random()) into v_actions
-  from (select a from unnest(array['blink', 'turn_left', 'turn_right', 'smile']) a order by random() limit 2) t;
+  from (select a from unnest(array['blink', 'turn_left', 'turn_right', 'open_mouth']) a order by random() limit 2) t;
   insert into public.clock_challenges (membership_id, actions) values (v_member, v_actions) returning * into v_row;
   return jsonb_build_object('id', v_row.id, 'actions', to_jsonb(v_row.actions), 'expires_at', v_row.expires_at);
 end $$;

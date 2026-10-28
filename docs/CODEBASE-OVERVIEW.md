@@ -141,3 +141,5 @@ These are the reasons the new system moves the rules into the database. Each has
 
 - I didn't run the original application (that needs PHP and MySQL, or Docker). The behaviour described comes from reading the code.
 - Some Blade views are 900 to 1,100 lines long. I read their script sections and the parts named here, not every line of markup.
+- **Documentation read alongside the code:** the final capstone manuscript (July 2025, a four-person team project), the operations and payroll process notes, and the user acceptance test report (cycle 2, September 2025).
+- **The test report doesn't match this code.** It describes a Human Resources Manager role, account lockout after 5 failed attempts, a 30-minute idle timeout, and a payroll module with absence, tardiness and government contribution deductions, tested on a Vercel deployment. None of that is in `main`. Either a later version lives in another repository, or the report covers planned features. To be confirmed by Kidd.

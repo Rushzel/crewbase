@@ -809,6 +809,11 @@ isOneToOne: false
 "save_shift":
 { Args: { "p_ends": string,"p_member": string,"p_shift"?: string,"p_site": string,"p_starts": string }; Returns: string
                            },
+"site_geofences":
+{ Args: { "p_org": string }; Returns: {
+              "id": string,"kind": string,"radius_m": number,"ring": Json,"site_id": string
+            }[]
+                           },
 "start_break":
 { Args: { "p_org": string }; Returns: undefined
                            },

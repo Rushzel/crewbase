@@ -9,7 +9,8 @@ Updated 28 Oct 2026.
 - Screens: home with demo buttons, sign-in, sign-up, business setup, Today (clock with location and face steps), History, Requests, People, Schedule, Payslips (with PDF), Payroll, Analytics, Face check enrollment, Settings.
 - Continuous integration workflow and keep-alive workflow (files only; they run once the repository is on GitHub).
 - README with the reasons for each rule, and the case study.
-- **Tests: 171 database, 17 unit, 13 end-to-end, all passing. Production build passes.**
+- Settings: General, People and pay (invite, role, manager, status, pay rates), Sites and geofences (Leaflet map editor for circles and polygons), Deductions. Invitation acceptance page.
+- **Tests: 182 database, 17 unit, 13 end-to-end, all passing. Production build passes.**
 
 ## Test results
 | File | Tests | Covers |
@@ -20,6 +21,7 @@ Updated 28 Oct 2026.
 | `04_face` | 21 | Consent, supervised enrollment, unreadable embeddings, one-use and expiring challenges, liveness order and timing, wrong face, replays |
 | `05_payroll` | 36 | Review and lock steps, locked periods, hand-worked pay for hourly, daily (absence, tardiness) and mid-period raise, totals, void and reissue, privacy |
 | `06_analytics_demo` | 23 | Hand-checked measures, "not enough data", team-only analytics, demo account protection, demo reset |
+| `07_invitations` | 11 | Who may invite, hashed one-time tokens, matching email, expiry |
 | Vitest (`src/lib`) | 17 | Formatting, contrast check, analytics flags and forecast |
 | Playwright (`e2e`) | 13 | Demo sign-in for all six accounts, navigation by role, redirects, device clock set to 2030, breaks, flagged punch outside the fence, phone width |
 
@@ -51,7 +53,8 @@ Updated 28 Oct 2026.
 
 ## Not done yet
 - Manual liveness spoof test (criterion 27): needs a person, a camera and made-up face photos.
-- Screens for editing roles, deduction rules, members and rates, invitations, and drawing geofences on a map. The database functions and policies for all of them exist and are tested.
+- A roles editor screen (roles and permissions can be changed through the database with policies, but there's no screen yet) and bracket-table deductions in the screen (fixed and percent only).
+- Sending invitation emails: needs an email service; for now the owner copies the link shown once.
 - Real-camera check of the face flow (see decisions 11 and 12).
 
 ## Next step

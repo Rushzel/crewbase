@@ -63,7 +63,7 @@ The interface hides what you can't do, but only for convenience. The database is
 
 | Suite | Command | Result |
 |---|---|---|
-| Database (pgTAP) | `npm run test:db` | 171 passing: isolation, permissions, time, location, face and liveness, corrections, payroll worked examples, analytics, demo reset |
+| Database (pgTAP) | `npm run test:db` | 182 passing: isolation, permissions, time, location, face and liveness, corrections, payroll worked examples, analytics, demo reset, invitations |
 | Unit (Vitest) | `npm test` | 17 passing: formatting, contrast check, analytics flags and forecast |
 | End-to-end (Playwright) | `npm run test:e2e` | 13 passing: demo sign-in for all roles, role navigation, the clock ignoring a device set to 2030, breaks, a flagged punch, phone width |
 

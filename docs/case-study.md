@@ -41,7 +41,7 @@ The pattern: rules lived where they could be skipped (the browser, a controller 
 
 ## Results
 
-- **171 database tests, 17 unit tests and 13 end-to-end tests pass.** They cover the acceptance criteria, with two exceptions: the brand colour check is tested as a unit rather than end to end, and the liveness spoof test (holding a photo to the camera) is manual and not run yet.
+- **182 database tests, 17 unit tests and 13 end-to-end tests pass.** They cover the acceptance criteria, with two exceptions: the brand colour check is tested as a unit rather than end to end, and the liveness spoof test (holding a photo to the camera) is manual and not run yet.
 - The tests found **nine real bugs**, most before any screen existed: for example, deleting an entry tried to update append-only evidence, four separate rules broke the nightly demo reset, and the reset failed only on some days because of an indexing mistake.
 - The payroll tests use hand-calculated examples. One demo payslip shows "Tardiness, 67 min: ₱85.15", the same case as the original test report, which had it as ₱85.11 (67 ÷ 60 × ₱76.25 = ₱85.15).
 - A browser test sets the device clock to 2030 and times in: the record still shows today, from the server's clock.

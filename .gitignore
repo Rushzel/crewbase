@@ -42,3 +42,7 @@ next-env.d.ts
 
 # face models copied from node_modules
 /public/models/
+
+# test output
+/test-results/
+/playwright-report/

@@ -26,12 +26,12 @@ export function ClockPanel({ orgId, sites, openEntry, checks, serverNow }: Props
   const [site, setSite] = useState(sites[0]?.id ?? "");
   const [step, setStep] = useState<Step>({ kind: "idle" });
   // Clock display: starts from the server's time and ticks locally. Recorded times always come from the database.
-  const offset = useRef(new Date(serverNow).getTime() - Date.now());
-  const [now, setNow] = useState(() => new Date(Date.now() + offset.current));
+  const [now, setNow] = useState(() => new Date(serverNow));
   useEffect(() => {
-    const t = setInterval(() => setNow(new Date(Date.now() + offset.current)), 1000);
+    const offset = new Date(serverNow).getTime() - Date.now();
+    const t = setInterval(() => setNow(new Date(Date.now() + offset)), 1000);
     return () => clearInterval(t);
-  }, []);
+  }, [serverNow]);
   useEffect(() => () => stopCamera(stream.current), []);
   useEffect(() => {
     if (checks.face) loadHuman().catch(() => undefined); // start downloading the models early

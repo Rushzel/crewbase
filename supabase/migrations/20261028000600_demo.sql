@@ -232,7 +232,7 @@ begin
     requested_in, requested_out, requested_break_minutes, site_id, reason, status, created_at)
   select v_org, e.membership_id, e.id, 'change_times', e.work_date, e.clock_in, e.clock_out, e.break_minutes,
     e.clock_in - interval '20 minutes', e.clock_out, e.break_minutes, e.site_id,
-    (array['Started early to receive a delivery', 'Opened the store before my shift', 'Phone clock-in failed at the door'])[row_number() over ()],
+    (array['Started early to receive a delivery', 'Opened the store before my shift', 'Phone clock-in failed at the door'])[1 + ((row_number() over (order by e.work_date desc, e.id) - 1) % 3)::int],
     'pending', now() - interval '1 day'
   from public.time_entries e
   where e.org_id = v_org and e.status = 'closed' and e.work_date between v_today - 5 and v_today - 1

@@ -14,7 +14,7 @@ create table public.shifts (
   starts_at timestamptz not null,
   ends_at timestamptz not null,
   foreign key (membership_id, org_id) references public.memberships (id, org_id) on delete cascade,
-  foreign key (site_id, org_id) references public.sites (id, org_id),
+  foreign key (site_id, org_id) references public.sites (id, org_id) deferrable initially deferred,
   check (ends_at > starts_at and ends_at - starts_at <= interval '16 hours'),
   exclude using gist (membership_id with =, tstzrange(starts_at, ends_at, '[)') with &&)
 );
@@ -37,10 +37,10 @@ create table public.pay_periods (
   starts_on date not null,
   ends_on date not null,
   status public.period_status not null default 'open',
-  locked_by uuid references public.memberships (id),
+  locked_by uuid references public.memberships (id) deferrable initially deferred,
   locked_at timestamptz,
   lock_override_reason text,
-  finalized_by uuid references public.memberships (id),
+  finalized_by uuid references public.memberships (id) deferrable initially deferred,
   finalized_at timestamptz,
   check (ends_on >= starts_on and ends_on - starts_on <= 31),
   exclude using gist (org_id with =, daterange(starts_on, ends_on, '[]') with &&)
@@ -49,7 +49,7 @@ create table public.pay_periods (
 create table public.timesheet_approvals (
   period_id uuid not null references public.pay_periods (id) on delete cascade,
   membership_id uuid not null references public.memberships (id) on delete cascade,
-  approved_by uuid not null references public.memberships (id),
+  approved_by uuid not null references public.memberships (id) deferrable initially deferred,
   approved_at timestamptz not null default now(),
   note text,
   primary key (period_id, membership_id)

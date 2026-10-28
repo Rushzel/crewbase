@@ -103,8 +103,8 @@ create table public.memberships (
   unique (org_id, user_id),
   unique (org_id, employee_code),
   unique (id, org_id),
-  foreign key (role_id, org_id) references public.roles (id, org_id),
-  foreign key (manager_id, org_id) references public.memberships (id, org_id),
+  foreign key (role_id, org_id) references public.roles (id, org_id) deferrable initially deferred,
+  foreign key (manager_id, org_id) references public.memberships (id, org_id) deferrable initially deferred,
   check (manager_id is distinct from id),
   check (status = 'invited' or user_id is not null)
 );
@@ -250,6 +250,10 @@ declare
   v_new jsonb := case when tg_op in ('INSERT', 'UPDATE') then to_jsonb(new) end;
 begin
   v_org := coalesce((v_new ->> 'org_id')::uuid, (v_old ->> 'org_id')::uuid, (v_new ->> 'id')::uuid);
+  -- Rows removed because their whole business is being deleted need no audit entry.
+  if not exists (select 1 from public.organizations where id = v_org) then
+    return coalesce(new, old);
+  end if;
   insert into public.audit_log (org_id, action, table_name, row_id, old_value, new_value, reason)
   values (v_org, lower(tg_op), tg_table_name, coalesce(v_new ->> 'id', v_old ->> 'id', v_org::text),
           v_old, v_new, nullif(current_setting('app.reason', true), ''));

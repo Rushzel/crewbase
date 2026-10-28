@@ -97,6 +97,8 @@ declare v_today date;
 begin
   -- The demo seed writes past days; nothing else can set this flag (it's set inside a security definer function).
   if current_setting('app.seeding', true) = 'on' then return coalesce(new, old); end if;
+  -- Removed because the whole business is being deleted.
+  if tg_op = 'DELETE' and not exists (select 1 from public.organizations where id = old.org_id) then return old; end if;
   select (now() at time zone timezone)::date into v_today from public.org_settings
   where org_id = coalesce(new.org_id, old.org_id);
   if coalesce(new.work_date, old.work_date) <> v_today or (tg_op = 'UPDATE' and new.work_date <> old.work_date) then

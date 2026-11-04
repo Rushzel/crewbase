@@ -737,16 +737,16 @@ grant select on public.time_entries, public.breaks, public.clock_events, public.
   to authenticated;
 
 create policy "see entries you may see" on public.time_entries
-  for select to authenticated using (private.can_see_member(membership_id));
+  for select to authenticated using (membership_id in (select private.visible_members()));
 create policy "see breaks of entries you may see" on public.breaks
   for select to authenticated
-  using (private.can_see_member((select membership_id from public.time_entries e where e.id = entry_id)));
+  using (exists (select 1 from public.time_entries e where e.id = entry_id));
 create policy "see evidence you may see" on public.clock_events
-  for select to authenticated using (private.can_see_member(membership_id));
+  for select to authenticated using (membership_id in (select private.visible_members()));
 create policy "see requests you may see" on public.correction_requests
-  for select to authenticated using (private.can_see_member(membership_id));
+  for select to authenticated using (membership_id in (select private.visible_members()));
 create policy "see changes you may see" on public.change_log
-  for select to authenticated using (private.can_see_member(membership_id));
+  for select to authenticated using (membership_id in (select private.visible_members()));
 
 do $$
 declare f text;

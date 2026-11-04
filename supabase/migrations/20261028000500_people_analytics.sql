@@ -121,13 +121,13 @@ grant select on public.output_targets to authenticated;
 grant insert, update, delete on public.output_targets to authenticated;
 
 create policy "see output you may see" on public.output_records
-  for select to authenticated using (private.can_see_member(membership_id));
+  for select to authenticated using (membership_id in (select private.visible_members()));
 create policy "log your own output, or your team's" on public.output_records
   for all to authenticated
   using (membership_id = private.my_membership(org_id) or private.can_act_on_member(membership_id, 'time.edit'))
   with check (membership_id = private.my_membership(org_id) or private.can_act_on_member(membership_id, 'time.edit'));
 create policy "members see targets" on public.output_targets
-  for select to authenticated using (private.is_member(org_id));
+  for select to authenticated using (org_id in (select private.my_orgs()));
 create policy "settings managers set targets" on public.output_targets
   for all to authenticated using (private.has_permission(org_id, 'settings.manage'))
   with check (private.has_permission(org_id, 'settings.manage'));
@@ -240,7 +240,7 @@ language sql stable security invoker set search_path = '' as $$
   from public.memberships m
   left join per on per.membership_id = m.id
   left join ev on ev.membership_id = m.id
-  where m.org_id = p_org and m.status <> 'inactive' and private.can_see_member(m.id)
+  where m.org_id = p_org and m.status <> 'inactive' and m.id in (select private.visible_members())
     and private.has_permission(p_org, 'analytics.view')
 $$;
 
@@ -254,7 +254,7 @@ language sql stable security invoker set search_path = '' as $$
     count(*) filter (where f.scheduled)::int,
     count(*) filter (where f.late_minutes > f.grace_minutes)::int
   from generate_series(p_from, p_to, interval '1 day') d(day)
-  left join public.member_day_facts f on f.day = d.day::date and f.org_id = p_org and private.can_see_member(f.membership_id)
+  left join public.member_day_facts f on f.day = d.day::date and f.org_id = p_org and f.membership_id in (select private.visible_members())
   where private.has_permission(p_org, 'analytics.view')
   group by d.day order by d.day
 $$;

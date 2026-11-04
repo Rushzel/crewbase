@@ -595,7 +595,7 @@ grant insert, delete on public.pay_rates to authenticated;
 grant insert, update, delete on public.deduction_rules to authenticated;
 
 create policy "see shifts you may see" on public.shifts
-  for select to authenticated using (private.can_see_member(membership_id));
+  for select to authenticated using (membership_id in (select private.visible_members()));
 
 create policy "see your own rate, or all with payroll" on public.pay_rates
   for select to authenticated
@@ -608,12 +608,12 @@ create policy "payroll removes future rates" on public.pay_rates
   for delete to authenticated using (private.has_permission(org_id, 'payroll.run') and effective_from > current_date);
 
 create policy "members see pay periods" on public.pay_periods
-  for select to authenticated using (private.is_member(org_id));
+  for select to authenticated using (org_id in (select private.my_orgs()));
 create policy "see approvals you may see" on public.timesheet_approvals
-  for select to authenticated using (private.can_see_member(membership_id));
+  for select to authenticated using (membership_id in (select private.visible_members()));
 
 create policy "members see deduction rules" on public.deduction_rules
-  for select to authenticated using (private.is_member(org_id));
+  for select to authenticated using (org_id in (select private.my_orgs()));
 create policy "payroll manages deduction rules" on public.deduction_rules
   for all to authenticated using (private.has_permission(org_id, 'payroll.run'))
   with check (private.has_permission(org_id, 'payroll.run'));

@@ -23,11 +23,79 @@ create table public.geofences (
 );
 create index geofences_area_idx on public.geofences using gist (area);
 
+-- Who works in which area, and who leads it. org_id is filled from the site by a trigger;
+-- the two composite keys then guarantee the person and the area belong to the same business.
 create table public.member_sites (
-  membership_id uuid not null references public.memberships (id) on delete cascade,
-  site_id uuid not null references public.sites (id) on delete cascade,
-  primary key (membership_id, site_id)
+  membership_id uuid not null,
+  site_id uuid not null,
+  is_leader boolean not null default false,
+  org_id uuid not null,
+  primary key (membership_id, site_id),
+  foreign key (membership_id, org_id) references public.memberships (id, org_id) on delete cascade,
+  foreign key (site_id, org_id) references public.sites (id, org_id) on delete cascade
 );
+create index member_sites_site_idx on public.member_sites (site_id) include (membership_id, is_leader);
+
+create function private.fill_member_site_org()
+returns trigger language plpgsql security definer set search_path = '' as $$
+begin
+  new.org_id := (select org_id from public.sites where id = new.site_id);
+  return new;
+end $$;
+create trigger fill_org before insert or update of site_id on public.member_sites
+  for each row execute function private.fill_member_site_org();
+
+------------------------------------------------------------------------------
+-- Who may see whose records.
+------------------------------------------------------------------------------
+
+-- The memberships whose records the caller may see, across every business they belong to:
+--   themself;
+--   everyone in the business (scope all);
+--   people whose manager chain leads to them, and people in the areas they lead (scope team).
+-- Policies use `membership_id in (select private.visible_members())`. The subquery doesn't depend
+-- on the row, so it runs once per query; the old per-row check walked the manager chain for every row.
+create function private.visible_members()
+returns setof uuid language sql stable security definer set search_path = '' as $$
+  with recursive me as (
+    select m.id, m.org_id, r.scope
+    from public.memberships m join public.roles r on r.id = m.role_id
+    where m.user_id = auth.uid() and m.status = 'active'
+  ),
+  reports as (
+    select m.id, 1 as depth
+    from public.memberships m join me on me.scope = 'team' and m.manager_id = me.id
+    union
+    select m.id, r.depth + 1
+    from public.memberships m join reports r on m.manager_id = r.id
+    where r.depth < 50
+  )
+  select me.id from me
+  union
+  select m.id from public.memberships m join me on me.scope = 'all' and m.org_id = me.org_id
+  union
+  select reports.id from reports
+  union
+  select ms.membership_id
+  from public.member_sites led
+  join me on me.scope = 'team' and led.membership_id = me.id and led.is_leader
+  join public.member_sites ms on ms.site_id = led.site_id
+$$;
+
+create function private.can_see_member(p_member uuid)
+returns boolean language sql stable security definer set search_path = '' as $$
+  select exists (select 1 from private.visible_members() v where v = p_member)
+$$;
+
+-- True when the caller has a permission and may see the member (used for edits).
+create function private.can_act_on_member(p_member uuid, p_permission public.app_permission)
+returns boolean language sql stable security definer set search_path = '' as $$
+  select private.can_see_member(p_member)
+     and private.has_permission((select org_id from public.memberships where id = p_member), p_permission)
+$$;
+
+grant execute on function private.visible_members(), private.can_see_member(uuid),
+  private.can_act_on_member(uuid, public.app_permission) to authenticated;
 
 create function private.site_timezone(p_site uuid)
 returns text language sql stable security definer set search_path = '' as $$
@@ -146,24 +214,22 @@ grant insert, update, delete on public.sites, public.member_sites to authenticat
 grant delete on public.geofences to authenticated;
 
 create policy "members read sites" on public.sites
-  for select to authenticated using (private.is_member(org_id));
+  for select to authenticated using (org_id in (select private.my_orgs()));
 create policy "site managers write sites" on public.sites
   for all to authenticated using (private.has_permission(org_id, 'sites.manage'))
   with check (private.has_permission(org_id, 'sites.manage'));
 
 create policy "members read geofences" on public.geofences
-  for select to authenticated using (private.is_member((select org_id from public.sites s where s.id = site_id)));
+  for select to authenticated using (site_id in (select s.id from public.sites s));
 create policy "site managers delete geofences" on public.geofences
   for delete to authenticated using (private.has_permission((select org_id from public.sites s where s.id = site_id), 'sites.manage'));
 
 create policy "members read site assignments" on public.member_sites
-  for select to authenticated using (private.is_member((select org_id from public.sites s where s.id = site_id)));
+  for select to authenticated using (org_id in (select private.my_orgs()));
 create policy "people managers assign sites" on public.member_sites
   for all to authenticated
-  using (private.has_permission((select org_id from public.sites s where s.id = site_id), 'people.manage'))
-  with check (
-    private.has_permission((select org_id from public.sites s where s.id = site_id), 'people.manage')
-    and (select org_id from public.sites s where s.id = site_id) = (select org_id from public.memberships m where m.id = membership_id)
-  );
+  using (private.has_permission(org_id, 'people.manage'))
+  with check (private.has_permission(org_id, 'people.manage'));
 
 create trigger audit_sites after insert or update or delete on public.sites for each row execute function private.audit_row();
+create trigger audit_member_sites after insert or update or delete on public.member_sites for each row execute function private.audit_row();

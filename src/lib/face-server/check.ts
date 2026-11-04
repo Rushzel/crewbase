@@ -58,8 +58,9 @@ export async function runCheck(frames: CapturedFrame[], colors: string[], requir
   // person as the still frames, so liveness can't come from one face and identity from another.
   // (A closed-eye frame still matches well enough; the limit is for a different person.)
   const embeddings = await Promise.all(decoded.map((d) => embed(alignFace(d.img, d.face.landmarks))));
-  const n = still.length;
-  const mean = embeddings.slice(0, n).reduce((acc, e) => acc.map((v, i) => v + e[i] / n), new Array(128).fill(0));
+  const stillEmbeddings = embeddings.filter((_, i) => decoded[i].phase === "still");
+  const n = stillEmbeddings.length;
+  const mean = stillEmbeddings.reduce((acc, e) => acc.map((v, i) => v + e[i] / n), new Array(128).fill(0));
   const len = Math.hypot(...mean) || 1;
   const embedding = mean.map((v) => v / len);
   const sameness = Math.min(...embeddings.map((e) => cosine(embedding, e)));

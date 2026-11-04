@@ -11,6 +11,20 @@ export const maxDuration = 60;
 
 const MAX_FRAMES = 40;
 const MAX_BYTES = 400_000;
+const MAX_UPLOAD = MAX_FRAMES * MAX_BYTES + 64_000;
+const PHASES = new Set(["still", "blink", "flash"]);
+
+function validMeta(value: unknown): value is { phase: CapturedFrame["phase"]; step?: number }[] {
+  return (
+    Array.isArray(value) &&
+    value.every(
+      (m) =>
+        m !== null && typeof m === "object" && PHASES.has(m.phase) &&
+        (m.phase === "flash" ? Number.isInteger(m.step) : m.step === undefined) &&
+        Object.keys(m).every((k) => k === "phase" || k === "step"),
+    )
+  );
+}
 
 export async function POST(request: NextRequest) {
   const supabase = await createClient();
@@ -18,12 +32,21 @@ export async function POST(request: NextRequest) {
   const userId = auth?.claims?.sub;
   if (!userId) return NextResponse.json({ passed: false, reason: "Sign in first" }, { status: 401 });
 
+  // Refuse anything bigger than a full check before reading it.
+  const declared = Number(request.headers.get("content-length") ?? "0");
+  if (!declared || declared > MAX_UPLOAD) {
+    return NextResponse.json({ passed: false, reason: "The upload was too large; try again" }, { status: 413 });
+  }
   const form = await request.formData();
   const challengeId = String(form.get("challenge") ?? "");
-  let meta: { phase: CapturedFrame["phase"]; step?: number }[];
+  const rawMeta = String(form.get("meta") ?? "");
+  let meta: unknown = null;
   try {
-    meta = JSON.parse(String(form.get("meta") ?? "[]"));
+    meta = rawMeta.length <= 4000 ? JSON.parse(rawMeta) : null;
   } catch {
+    meta = null;
+  }
+  if (!validMeta(meta)) {
     return NextResponse.json({ passed: false, reason: "The pictures were incomplete; try again" }, { status: 400 });
   }
   const files = form.getAll("frame").filter((f): f is File => f instanceof File);
@@ -31,7 +54,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ passed: false, reason: "The pictures were incomplete; try again" }, { status: 400 });
   }
 
-  // The challenge must be the caller's own, unchecked and unexpired; this also gives the colours shown.
+  // The challenge must be the caller's own, unchecked and unexpired; this claims it (so it's checked once)
+  // and gives the colours shown.
   const { data: challenge, error } = await supabase.rpc("face_challenge", { p_challenge: challengeId });
   if (error || !challenge) return NextResponse.json({ passed: false, reason: error?.message ?? "Challenge not found" }, { status: 400 });
   const c = challenge as { purpose: "clock" | "enroll"; colors: string[]; liveness_required: boolean };

@@ -58,6 +58,7 @@ create table public.clock_challenges (
   consent_at timestamptz,
   issued_at timestamptz not null default now(),
   expires_at timestamptz not null default now() + interval '2 minutes',
+  claimed_at timestamptz,
   checked_at timestamptz,
   used_at timestamptz,
   check (purpose <> 'enroll' or consent_at is not null)
@@ -225,6 +226,11 @@ begin
   if p_purpose = 'clock' and v_target <> v_me then
     raise exception 'A face check before a time in is always your own' using errcode = '42501';
   end if;
+  -- Each check costs the server real work, so nobody can start more than 10 in 10 minutes.
+  if (select count(*) from public.clock_challenges
+      where membership_id = v_me and issued_at > now() - interval '10 minutes') >= 10 then
+    raise exception 'Too many face checks; wait a few minutes and try again' using errcode = 'P0001';
+  end if;
   if p_purpose = 'enroll' then
     if v_target <> v_me and not private.can_act_on_member(v_target, 'face.enroll_others') then
       raise exception 'You can only enroll your own face' using errcode = '42501';
@@ -259,14 +265,15 @@ begin
   return seq;
 end $$;
 
--- What the server needs to check a challenge's frames, for the person who asked for it.
+-- What the server needs to check a challenge's frames, for the person who asked for it. Claims the
+-- challenge, so its frames are checked once only, however many uploads arrive at the same time.
 create function public.face_challenge(p_challenge uuid)
-returns jsonb language plpgsql stable security definer set search_path = '' as $$
+returns jsonb language plpgsql volatile security definer set search_path = '' as $$
 declare
   c public.clock_challenges;
   v_org uuid;
 begin
-  select * into c from public.clock_challenges where id = p_challenge;
+  select * into c from public.clock_challenges where id = p_challenge for update;
   v_org := (select org_id from public.memberships where id = c.membership_id);
   if c.id is null or c.membership_id is distinct from private.my_membership(v_org) then
     raise exception 'Challenge not found' using errcode = 'P0002';
@@ -274,6 +281,10 @@ begin
   if c.checked_at is not null or c.expires_at <= now() then
     raise exception 'This face check has expired; start again' using errcode = 'P0001';
   end if;
+  if c.claimed_at is not null then
+    raise exception 'This face check is already being checked' using errcode = 'P0001';
+  end if;
+  update public.clock_challenges set claimed_at = now() where id = c.id;
   return jsonb_build_object('id', c.id, 'purpose', c.purpose, 'colors', to_jsonb(c.colors),
     'liveness_required', (select liveness_required from public.org_settings where org_id = v_org) or c.purpose = 'enroll');
 end $$;

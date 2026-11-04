@@ -209,6 +209,17 @@ select is(pg_temp.record('g1', '00000000-0000-0000-0000-0000000000e2', true, pg_
   'enrolled with an older face model; enroll again', 'a face enrolled with another model must be enrolled again');
 reset role;
 
+-- Each challenge's frames are checked once, and nobody can start more than 10 checks in 10 minutes.
+select pg_temp.login('00000000-0000-0000-0000-0000000000e2');
+set local role authenticated;
+insert into ids values ('k1', pg_temp.challenge());   -- Gia's 10th challenge in this test
+select ok(public.face_challenge(pg_temp.id('k1')) ? 'colors', 'the server claims a challenge to check it');
+select throws_ok($$ select public.face_challenge(pg_temp.id('k1')) $$, 'P0001', 'This face check is already being checked',
+  'a second upload for the same challenge is refused');
+select throws_ok($$ select pg_temp.challenge() $$, 'P0001', 'Too many face checks; wait a few minutes and try again',
+  'nobody can start more than 10 checks in 10 minutes');
+reset role;
+
 select is((select count(*)::int from public.time_entries where org_id = pg_temp.id('org')), 1, 'only the one passed check created an entry (face policy is block)');
 select ok((select count(*) from public.clock_events where not accepted and org_id = pg_temp.id('org')) >= 6, 'every refused attempt is recorded as evidence');
 

@@ -29,6 +29,12 @@ describe("capture schedule", () => {
     expect(followsSchedule(good.slice(0, -1), 5)).toBe(false);
   });
 
+  it("refuses unknown labels, and steps on frames that aren't colour frames", () => {
+    expect(followsSchedule([{ phase: "other" } as unknown as Labelled, ...good], 5)).toBe(false);
+    expect(followsSchedule(good.map((f, i) => (i === 0 ? { phase: "still" as const, step: 0 } : f)), 5)).toBe(false);
+    expect(followsSchedule(good.map((f, i) => (i === good.length - 1 ? { phase: "flash" as const, step: 4.5 } : f)), 5)).toBe(false);
+  });
+
   it("refuses a check with too few still or blink frames", () => {
     expect(followsSchedule(good.filter((f) => f.phase !== "blink"), 5)).toBe(false);
   });

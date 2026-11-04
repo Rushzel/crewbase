@@ -112,6 +112,11 @@ export type Labelled = { phase: "still" | "blink" | "flash"; step?: number };
 
 export function followsSchedule(frames: Labelled[], colorCount: number): boolean {
   const order = { still: 0, blink: 1, flash: 2 } as const;
+  // Every label must be one of the three phases, with a whole-number step on colour frames only.
+  for (const f of frames) {
+    if (!Object.hasOwn(order, f.phase)) return false;
+    if (f.phase === "flash" ? !Number.isInteger(f.step) : f.step !== undefined) return false;
+  }
   for (let i = 1; i < frames.length; i++) if (order[frames[i].phase] < order[frames[i - 1].phase]) return false;
   const still = frames.filter((f) => f.phase === "still").length;
   const blink = frames.filter((f) => f.phase === "blink").length;

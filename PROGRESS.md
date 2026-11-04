@@ -41,7 +41,7 @@ Updated 4 Nov 2026.
 - **Demo.** One made-up business, Demo Company: field employees in three areas, with an account for each of the five roles. (The café demo was removed on 4 Nov at Kidd's request.)
 - **Also:** a roles editor (permission changes are audited one by one), invitation emails, and editing a sale's customer details.
 - **Face check version 2 (5 Nov):** decided on the server with free open models (YuNet, SFace, MiniFASNet), bank-style liveness (a blink, then a random screen-colour sequence the skin must reflect), and only the server may record a pass. See `docs/FACE-V2.md`.
-- **Tests: 324 database, 32 unit and 19 end-to-end, all passing. Lint, types and the production build pass.**
+- **Tests: 327 database, 33 unit and 19 end-to-end, all passing. Lint, types and the production build pass.**
 
 ## Test results
 | File | Tests | Covers |

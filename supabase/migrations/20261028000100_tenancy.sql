@@ -7,6 +7,9 @@ create extension if not exists postgis with schema extensions;
 
 create schema if not exists private;
 grant usage on schema private to authenticated;
+-- Functions in private are internal. They are not exposed through the API, and as a second layer
+-- new ones can't be run by everyone by default: the helpers that policies call are granted explicitly.
+alter default privileges in schema private revoke execute on functions from public;
 
 -- Fixed permission list. Businesses build roles from these; they can't invent new ones.
 create type public.app_permission as enum (

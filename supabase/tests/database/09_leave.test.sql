@@ -42,12 +42,13 @@ create function pg_temp.mon(p_offset int default 0) returns date language sql as
 $$;
 grant execute on function pg_temp.mon(int) to authenticated;
 
+select is(private.working_days(pg_temp.id('org'), pg_temp.mon(5), pg_temp.mon(6)), 1, 'Saturday counts and Sunday does not');
+
 -- Criterion 51.
 select pg_temp.login('03');
 set local role authenticated;
 insert into ids values ('r1', public.request_leave(pg_temp.id('org'), pg_temp.id('sick'), pg_temp.mon(0), pg_temp.mon(1), 'Flu'));
 select is((select days from public.leave_requests where id = pg_temp.id('r1')), 2::smallint, 'Monday to Tuesday is 2 working days');
-select is(private.working_days(pg_temp.id('org'), pg_temp.mon(5), pg_temp.mon(6)), 1, 'Saturday counts and Sunday does not');
 select throws_ok($$ select public.request_leave(pg_temp.id('org'), pg_temp.id('emergency'), pg_temp.mon(1), pg_temp.mon(2)) $$,
   'P0001', 'You already have leave pending or approved on some of these days', 'overlapping leave is refused');
 select throws_ok($$ select public.request_leave(pg_temp.id('org'), pg_temp.id('sick'), pg_temp.mon(7), pg_temp.mon(10)) $$,

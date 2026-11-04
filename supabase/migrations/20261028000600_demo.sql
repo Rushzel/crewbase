@@ -42,8 +42,10 @@ declare
   v_late_bias float8; v_flag boolean;
   v_period_a uuid; v_period_b uuid;
   v_start_a date; v_end_a date;
+  tpl record; v_role uuid;
 begin
-  perform setseed(case p_key when 'harbor' then 0.11 else 0.22 end);
+  if p_key <> 'harbor' then raise exception 'Unknown demo business %', p_key; end if;
+  perform setseed(0.11);
 
   insert into public.organizations (id, slug, name, brand_color, is_demo)
   values (private.demo_uuid(p_key || '-org'), p_key || case when p_key = 'harbor' then '-lane' else '' end, p_name, p_brand, true)
@@ -56,22 +58,22 @@ begin
     select v_org, f, case
       when f = 'face_verification' then p_face
       when f = 'output_tracking' then p_output
+      when f = 'sales' then false
       else true end
     from unnest(enum_range(null::public.feature_key)) f;
 
+  -- The small template's roles, renamed the way a café would name them.
   insert into public.roles (org_id, name, scope, is_owner) values (v_org, 'Owner', 'all', true) returning id into v_owner_role;
-  insert into public.roles (org_id, name, scope) values (v_org, case when p_key = 'harbor' then 'Shift lead' else 'Team leader' end, 'team')
-    returning id into v_manager_role;
-  insert into public.roles (org_id, name, scope) values (v_org, case when p_key = 'harbor' then 'Barista' else 'Field staff' end, 'own')
-    returning id into v_employee_role;
   insert into public.role_permissions select v_owner_role, p from unnest(enum_range(null::public.app_permission)) p;
-  insert into public.role_permissions (role_id, permission) values
-    (v_manager_role, 'time.clock'), (v_manager_role, 'time.edit'), (v_manager_role, 'requests.review'),
-    (v_manager_role, 'schedule.manage'), (v_manager_role, 'analytics.view'), (v_manager_role, 'face.enroll_others'),
-    (v_employee_role, 'time.clock'), (v_employee_role, 'analytics.view');
+  for tpl in select * from private.role_template('small') loop
+    insert into public.roles (org_id, name, scope)
+    values (v_org, case tpl.name when 'Manager' then 'Shift lead' else 'Barista' end, tpl.scope) returning id into v_role;
+    insert into public.role_permissions (role_id, permission) select v_role, unnest(tpl.permissions);
+    if tpl.name = 'Manager' then v_manager_role := v_role; else v_employee_role := v_role; end if;
+  end loop;
 
   -- Sites and geofences (made-up businesses at public landmarks' approximate coordinates).
-  if p_key = 'harbor' then
+  begin
     insert into public.sites (org_id, name, address) values
       (v_org, 'Makati branch', 'Sample address, Makati'), (v_org, 'Taguig branch', 'Sample address, Taguig');
     select array_agg(id order by name) into v_sites from public.sites where org_id = v_org;
@@ -82,18 +84,7 @@ begin
        extensions.st_buffer(extensions.st_setsrid(extensions.st_makepoint(121.0503, 14.5509), 4326)::extensions.geography, 80)::extensions.geography);
     v_names := array['Mara Villanueva', 'Joel Santiago', 'Tess Aquino', 'Rafa Domingo', 'Ina Castillo', 'Paolo Ramos',
                      'Liza Navarro', 'Dino Mercado', 'Kaye Soriano', 'Arnel Bautista', 'Bea Lorenzo', 'Gabby Torres'];
-  else
-    insert into public.sites (org_id, name, address) values
-      (v_org, 'Pasig hub', 'Sample address, Pasig'), (v_org, 'Valenzuela warehouse', 'Sample address, Valenzuela');
-    select array_agg(id order by name) into v_sites from public.sites where org_id = v_org;
-    insert into public.geofences (site_id, kind, center, radius_m, area) values
-      (v_sites[1], 'circle', extensions.st_setsrid(extensions.st_makepoint(121.0851, 14.5764), 4326)::extensions.geography, 120,
-       extensions.st_buffer(extensions.st_setsrid(extensions.st_makepoint(121.0851, 14.5764), 4326)::extensions.geography, 120)::extensions.geography),
-      (v_sites[2], 'polygon', null, null,
-       extensions.st_geogfromtext('SRID=4326;POLYGON((120.9790 14.6990, 120.9815 14.6990, 120.9815 14.7010, 120.9790 14.7010, 120.9790 14.6990))'));
-    v_names := array['Nestor Galang', 'Cris Valdez', 'Rhea Manalo', 'Jun Pascual', 'Lorna Dizon', 'Edgar Salazar',
-                     'Mylene Cruz', 'Ronnie Yap', 'Aileen Fajardo', 'Teddy Ocampo', 'Grace Lim', 'Bong Estrada'];
-  end if;
+  end;
 
   -- People: owner, manager, then employees reporting to the manager. Names are invented; codes mark them as samples.
   for i in 1 .. 12 loop
@@ -245,6 +236,17 @@ begin
   from public.time_entries e where e.org_id = v_org and e.status = 'missing_out' and e.work_date >= v_today - 14
   order by e.work_date desc limit 1;
 
+  -- Leave: an approved holiday coming up, one waiting for a decision, one rejected.
+  insert into public.leave_requests (org_id, membership_id, leave_type_id, starts_on, ends_on, days, reason, status, reviewed_by, review_note, reviewed_at)
+  select v_org, v_members[x.i], lt.id, private.next_workday(v_org, v_today + x.d_from), private.next_workday(v_org, v_today + x.d_to),
+    private.working_days(v_org, private.next_workday(v_org, v_today + x.d_from), private.next_workday(v_org, v_today + x.d_to)),
+    x.reason, x.st::public.leave_status, case when x.st <> 'pending' then v_manager end, x.note,
+    case when x.st <> 'pending' then now() - interval '1 day' end
+  from (values (6, 'Vacation', 10, 10, 'Family trip', 'approved', 'Enjoy'),
+               (7, 'Sick', 2, 2, 'Dental surgery', 'pending', null),
+               (8, 'Vacation', 4, 4, 'Concert', 'rejected', 'Short-staffed that day, please pick another date')) x (i, type, d_from, d_to, reason, st, note)
+  join public.leave_types lt on lt.org_id = v_org and lt.name = x.type;
+
   -- Pay periods: the last complete half-month finalized with payslips, the current one open.
   v_end_a := case when extract(day from v_today) > 15 then date_trunc('month', v_today)::date + 14
                   else (date_trunc('month', v_today) - interval '1 day')::date end;
@@ -273,7 +275,7 @@ returns void language plpgsql security definer set search_path = '' as $$
 begin
   perform set_config('app.seeding', 'on', true);
   perform private.seed_demo_business('harbor', 'Harbor Lane Café', '#b45309', 'hourly', false, false);
-  perform private.seed_demo_business('northgate', 'Northgate Logistics', '#0f766e', 'daily', true, true);
+  perform private.seed_field_demo();
   perform set_config('app.seeding', 'off', true);
 end $$;
 

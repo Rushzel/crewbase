@@ -186,6 +186,20 @@ select is((select employment_type::text from public.memberships where id = pg_te
 select is((select reason from public.audit_log where table_name = 'memberships' and row_id = pg_temp.id('far')::text
            and new_value ->> 'employment_type' = 'regular'), 'Probation completed', 'the promotion is in the audit log with its reason');
 
+-- The owner changes the phase 2 rules through the API role; staff can't.
+select pg_temp.login('01');
+set local role authenticated;
+select lives_ok($$ update public.org_settings set area_label = 'Branch', area_label_plural = 'Branches', earliest_clock_in = '06:00',
+  absent_after_minutes = 45, full_day_minutes = 420, half_day_minutes = 210, work_days = '{1,2,3,4,5}', probation_months = 3,
+  follow_up_hours = 48 where org_id = pg_temp.id('org') $$, 'the owner can change every new setting');
+reset role;
+select is((select area_label || '/' || work_days::text from public.org_settings where org_id = pg_temp.id('org')), 'Branch/{1,2,3,4,5}', 'and the change is saved');
+select pg_temp.login('03');
+set local role authenticated;
+update public.org_settings set area_label = 'Hacked' where org_id = pg_temp.id('org');
+reset role;
+select is((select area_label from public.org_settings where org_id = pg_temp.id('org')), 'Branch', 'staff can''t change settings');
+
 -- Criterion 62: the audit trail.
 select pg_temp.login('02');
 set local role authenticated;

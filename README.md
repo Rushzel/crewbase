@@ -24,11 +24,9 @@ npx supabase start          # local database in Docker, with migrations and demo
 npm run dev                 # http://localhost:3000
 ```
 
-Then open the home page and pick a role for either demo business:
-- **Harbor Lane Café** (a small team): owner, shift lead or barista.
-- **Northgate Solar** (field teams): owner, general manager, HR manager, operations manager, team leader or agent.
+Then open the home page and pick a role in **Demo Company**, a made-up field business with three areas: owner, general manager, HR manager, operations manager, team leader or agent.
 
-To sign in by hand, use `owner.harbor@crewbase.example` or `team-leader.northgate@crewbase.example` (the role key, a dot, then the business) with the password `crewbase-demo`. Emails the app sends locally, such as sale confirmation links, appear in Supabase's test mailbox at http://127.0.0.1:54324.
+To sign in by hand, use `owner@demo.crewbase.example`, or replace `owner` with `general-manager`, `hr`, `operations`, `team-leader` or `staff`. The password is `crewbase-demo`. Emails the app sends locally, such as sale confirmation links, appear in Supabase's test mailbox at http://127.0.0.1:54324.
 
 Copy `.env.example` to `.env.local` first; the local values are printed by `npx supabase status`.
 
@@ -88,9 +86,9 @@ The interface hides what you can't do, but only for convenience. The database is
 
 | Suite | Command | Result |
 |---|---|---|
-| Database (pgTAP) | `npm run test:db` | 299 passing. Covers isolation, permissions, team visibility, time, location, face and liveness, and corrections. Also payroll worked examples (including leave and incentives), leave rules, sales and confirmation links, daily status, probation, analytics, the demo reset and invitations. |
+| Database (pgTAP) | `npm run test:db` | 302 passing. Covers isolation, permissions, team visibility, time, location, face and liveness, and corrections. Also payroll worked examples (including leave and incentives), leave rules, sales and confirmation links, daily status, probation, analytics, the demo reset and invitations. |
 | Unit (Vitest) | `npm test` | 17 passing: formatting, contrast check, analytics flags and forecast |
-| End-to-end (Playwright) | `npm run test:e2e` | 21 passing. Covers demo sign-in for all nine roles and their menus, the clock ignoring a device set to 2030, breaks, a flagged punch, and phone width. Also a team leader seeing only their area, a sale going from logged to customer confirmation to approval, and leave going from request to approval. |
+| End-to-end (Playwright) | `npm run test:e2e` | 18 passing. Covers demo sign-in for all six roles and their menus, the clock ignoring a device set to 2030, breaks, a flagged punch, and phone width. Also a team leader seeing only their area, a sale going from logged to customer confirmation to approval, and leave going from request to approval. |
 
 The payroll tests use hand-calculated examples, for example: 16 regular hours at ₱100 plus 2 overtime hours at 1.25× is ₱1,850 gross; less a ₱50 fund and 10% tax is ₱1,615 net.
 

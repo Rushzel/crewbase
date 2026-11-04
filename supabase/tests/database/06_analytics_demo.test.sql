@@ -78,18 +78,18 @@ select is((select count(*)::int from public.member_day_facts where membership_id
 reset role;
 
 -- Criterion 45: demo accounts can't change email or password.
-select throws_ok($$ update auth.users set email = 'stolen@example.test' where email = 'employee.harbor@crewbase.example' $$,
+select throws_ok($$ update auth.users set email = 'stolen@example.test' where email = 'staff@demo.crewbase.example' $$,
   '42501', 'Demo accounts can''t change their email or password', 'a demo account''s email is protected');
-select throws_ok($$ update auth.users set encrypted_password = 'x' where email = 'owner.northgate@crewbase.example' $$,
+select throws_ok($$ update auth.users set encrypted_password = 'x' where email = 'owner@demo.crewbase.example' $$,
   '42501', null, 'a demo account''s password is protected');
 select lives_ok($$ update auth.users set email = 'changed@example.test' where id = '00000000-0000-0000-0000-0000000000a9' $$, 'ordinary accounts can change email');
 
--- Criterion 46: the reset rebuilds the demo businesses and leaves real ones alone.
-select is((select count(*)::int from public.organizations where is_demo), 2, 'two demo businesses exist');
-update public.organizations set name = 'Vandalised by a visitor' where slug = 'harbor-lane';
+-- Criterion 46: the reset rebuilds the demo business and leaves real ones alone.
+select is((select count(*)::int from public.organizations where is_demo), 1, 'one demo business exists');
+update public.organizations set name = 'Vandalised by a visitor' where slug = 'demo-company';
 select lives_ok($$ select private.reset_demo_data() $$, 'the reset runs');
-select is((select name from public.organizations where slug = 'harbor-lane'), 'Harbor Lane Café', 'the demo business is restored');
-select is((select count(*)::int from public.organizations where is_demo), 2, 'still exactly two demo businesses');
+select is((select name from public.organizations where slug = 'demo-company'), 'Demo Company', 'the demo business is restored');
+select is((select count(*)::int from public.organizations where is_demo), 1, 'still exactly one demo business');
 select is((select name from public.organizations where id = pg_temp.id('org')), 'Sample Golf Repairs', 'a real business is untouched');
 select is((select count(*)::int from public.time_entries where org_id = pg_temp.id('org')), 13, 'and so is its time');
 

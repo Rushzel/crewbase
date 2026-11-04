@@ -444,7 +444,9 @@ grant select on public.organizations, public.org_settings, public.org_features, 
 grant update (name, logo_path, brand_color) on public.organizations to authenticated;
 grant update (timezone, currency, week_start, pay_frequency, grace_minutes, regular_minutes_per_day,
   overtime_multiplier, default_start_time, face_threshold, liveness_required, location_max_accuracy_m,
-  location_mode, face_fail_policy, location_fail_policy, keep_audit_frames) on public.org_settings to authenticated;
+  location_mode, face_fail_policy, location_fail_policy, keep_audit_frames,
+  area_label, area_label_plural, earliest_clock_in, absent_after_minutes, full_day_minutes, half_day_minutes,
+  work_days, probation_months, follow_up_hours) on public.org_settings to authenticated;
 grant update (enabled) on public.org_features to authenticated;
 grant insert, delete on public.role_permissions to authenticated;
 grant insert, delete on public.roles to authenticated;

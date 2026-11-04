@@ -1,9 +1,9 @@
 import { expect, test, type Page } from "@playwright/test";
 
-// Phase 2: team leaders, areas, sales and leave in the field demo (Northgate Solar).
+// Phase 2: team leaders, areas, sales and leave in the demo business.
 
 async function signIn(page: Page, role: string) {
-  await page.goto(`/demo/northgate/${role}`);
+  await page.goto(`/demo/${role}`);
   await expect(page).toHaveURL(/\/home/);
 }
 
@@ -39,7 +39,7 @@ test("a sale goes from logged to confirmed to approved", async ({ page, browser 
   const customer = `Test Customer ${Date.now()}`;
   await signIn(page, "staff");
   await page.goto("/sales");
-  const kit = await page.locator("#product option", { hasText: "Solar starter kit" }).getAttribute("value");
+  const kit = await page.locator("#product option", { hasText: "Starter package" }).getAttribute("value");
   await page.getByLabel("Product").selectOption(kit!);
   await page.getByLabel("Customer name").fill(customer);
   await page.getByLabel("Customer email").fill(`test.${Date.now()}@example.test`);

@@ -1,10 +1,29 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Browser } from "@playwright/test";
 
-// Harbor Lane Café: face check off, geofence on (Makati branch: 80 m circle at 14.5547, 121.0244).
-test.use({ permissions: ["geolocation"], geolocation: { latitude: 14.5547, longitude: 121.0244, accuracy: 8 } });
+// Demo Company, agent in Pasig East (a polygon around 14.577, 121.088).
+test.use({ permissions: ["geolocation"], geolocation: { latitude: 14.577, longitude: 121.088, accuracy: 8 } });
+
+// The demo has the face check on and time in from 5:00 AM. These tests are about time, not faces or
+// the hour they run, so the owner switches those off while they run and back on afterwards.
+async function setRules(browser: Browser, on: boolean) {
+  const page = await browser.newPage({ baseURL: test.info().project.use.baseURL });
+  await page.goto("/demo/owner");
+  await page.goto("/settings/general");
+  const face = page.locator("li", { hasText: "Face match with a liveness challenge" }).getByRole("button");
+  if ((await face.getAttribute("aria-pressed")) !== String(on)) {
+    await face.click();
+    await expect(face).toHaveAttribute("aria-pressed", String(on));
+  }
+  await page.getByLabel("Earliest time in (blank for any time)").fill(on ? "05:00" : "");
+  await page.getByRole("button", { name: "Save settings" }).click();
+  await expect(page.getByRole("status")).toContainText("Settings saved");
+  await page.close();
+}
+test.beforeAll(({ browser }) => setRules(browser, false));
+test.afterAll(({ browser }) => setRules(browser, true));
 
 test.beforeEach(async ({ page }) => {
-  await page.goto("/demo/harbor/employee");
+  await page.goto("/demo/staff");
   await expect(page).toHaveURL(/\/home/);
   await page.goto("/today");
   // The seed may have this person already working today; start from timed out.

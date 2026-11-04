@@ -38,8 +38,8 @@ Updated 4 Nov 2026.
   - hire dates;
   - the new settings;
   - template choice when a business is set up.
-- **Demo.** Northgate Solar is now a made-up field sales business with three areas and accounts for all six roles. Harbor Lane Café stays the small-team demo.
-- **Tests: 299 database, 17 unit and 21 end-to-end, all passing. Lint, types and the production build pass.**
+- **Demo.** One made-up business, Demo Company: field agents in three areas, with an account for each of the six roles. (The café demo was removed on 4 Nov at Kidd's request.)
+- **Tests: 302 database, 17 unit and 18 end-to-end, all passing. Lint, types and the production build pass.**
 
 ## Test results
 | File | Tests | Covers |
@@ -54,9 +54,9 @@ Updated 4 Nov 2026.
 | `08_teams` | 22 | Both templates and their permissions, area leaders, team visibility by area and by reports, same-business keys, audit |
 | `09_leave` | 27 | Working days, allowance including pending, overlaps, attachments in your own folder, review rules, locked periods, withdrawing |
 | `10_sales` | 33 | Product rights, logging, unreadable token hashes, one-use and expiring links, auto-approval, follow-up, corrections, own-sale rule |
-| `11_attendance_rules` | 35 | Every daily status, shifts against working days, business rules, earliest time in, paid and unpaid leave and incentives on payslips, team leader face enrollment, probation, audit access |
+| `11_attendance_rules` | 38 | Every daily status, shifts against working days, business rules, earliest time in, paid and unpaid leave and incentives on payslips, team leader face enrollment, probation, changing the new settings, audit access |
 | Vitest (`src/lib`) | 17 | Formatting, contrast check, analytics flags and forecast |
-| Playwright (`e2e`) | 21 | Demo sign-in for all nine roles and their menus, redirects, device clock set to 2030, breaks, flagged punch, phone width, a team leader's view, areas, a sale from logging to customer confirmation to approval, leave from request to approval |
+| Playwright (`e2e`) | 18 | Demo sign-in for all six roles and their menus, redirects, device clock set to 2030, breaks, flagged punch, phone width, a team leader's view, areas, a sale from logging to customer confirmation to approval, leave from request to approval |
 
 ## Bugs the tests caught (and fixed)
 1. Deleting an entry tried to update append-only evidence through a foreign key. Evidence now keeps the entry ID as a plain value.
@@ -66,8 +66,9 @@ Updated 4 Nov 2026.
 5. The demo reset failed in four ways during cascading deletes. Each rule now recognises "this whole business is being deleted".
 6. The demo seed indexed sample reasons by a row number counted before `limit`, which broke the nightly reset on some days.
 7. Logging a sale for a product that needs no customer confirmation crashed, because the token variable was never set.
-8. A loop variable named `t` clashed with a column of the same name in the café seed, so the demo failed to load.
+8. A loop variable named `t` clashed with a column of the same name in a demo seed, so the demo failed to load.
 9. A demo leave request was silently dropped whenever its date fell on a Sunday, so the demo looked different depending on the day.
+10. Saving settings failed with "permission denied": the new settings columns were missing from the list of columns owners may update. The database tests changed settings as the database owner, so only the browser test caught it; a database test now changes them as a signed-in owner.
 
 ## Decisions to review
 1. **Product name "Crewbase"** is a placeholder, set in one constant: `src/lib/brand.ts`.
@@ -77,7 +78,7 @@ Updated 4 Nov 2026.
 5. Late minutes count from the shift start, but only after the grace minutes (default 15).
 6. Monthly-rated staff are paid per scheduled day at the monthly rate × 12 ÷ 261.
 7. Sample deductions use generic names with illustrative rates labelled "(sample rate)".
-8. **Demo sign-ins:** `owner.harbor@crewbase.example`, `manager.harbor@…` and `employee.harbor@…`. For Northgate: `owner.northgate@…`, `general-manager.`, `hr.`, `operations.`, `team-leader.` and `staff.`. The password is `crewbase-demo`, and these accounts can't change their email or password.
+8. **Demo sign-ins:** `owner@demo.crewbase.example`, and the same with `general-manager`, `hr`, `operations`, `team-leader` or `staff` in place of `owner`. The password is `crewbase-demo`, and these accounts can't change their email or password.
 9. The original capstone's real names, company and data are not used anywhere.
 10. The liveness action "smile" became "open mouth", because the face library has no smile gesture.
 11. The face match threshold defaults to 0.60 and **isn't calibrated on real cameras yet**.

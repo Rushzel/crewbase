@@ -1,4 +1,4 @@
--- The field demo business: a made-up company whose agents sell home solar kits door to door,
+-- The demo business: a made-up company whose field agents sell packages door to door,
 -- organised the way JedSkies organised field teams. Every person and customer is invented.
 --
 --   Owner, General Manager, HR Manager, Operations Manager
@@ -6,10 +6,10 @@
 --   Man-days pay (daily rate, no shifts), Monday to Saturday, start 9:00, absent after 10:00
 --   Customer applications at every stage, leave, corrections, a finalized pay period
 
-create function private.seed_field_demo()
+create function private.seed_demo_company()
 returns uuid language plpgsql security definer set search_path = '' as $$
 declare
-  v_org uuid := private.demo_uuid('northgate-org');
+  v_org uuid := private.demo_uuid('demo-org');
   v_tz text := 'Asia/Manila';
   v_today date := (now() at time zone 'Asia/Manila')::date;
   v_owner_role uuid; v_role uuid;
@@ -45,7 +45,7 @@ begin
   perform setseed(0.33);
 
   insert into public.organizations (id, slug, name, brand_color, is_demo)
-  values (v_org, 'northgate', 'Northgate Solar', '#0f766e', true);
+  values (v_org, 'demo-company', 'Demo Company', '#0f766e', true);
   insert into public.org_settings (org_id, timezone, currency, pay_frequency, overtime_multiplier, default_start_time, grace_minutes,
     earliest_clock_in, absent_after_minutes, full_day_minutes, half_day_minutes, face_fail_policy, location_fail_policy,
     liveness_required, location_mode, area_label, area_label_plural, follow_up_hours, probation_months)
@@ -73,16 +73,16 @@ begin
 
   -- People. Managers report up the chain; agents report to their area's team leader.
   for i in 1 .. 18 loop
-    m := private.demo_user('northgate-person-' || i,
-      coalesce(v_logins[i], 'sample' || i) || '.northgate@crewbase.example',
+    m := private.demo_user('demo-person-' || i,
+      coalesce(v_logins[i], 'sample' || i) || '@demo.crewbase.example',
       case when v_logins[i] is not null then 'crewbase-demo' end);
     v_area := case when i between 5 and 7 then i - 4 when i between 8 and 16 then 1 + (i - 8) / 3 end;
     insert into public.memberships (id, org_id, user_id, display_name, employee_code, role_id, manager_id, employment_type, status, hired_on)
-    values (private.demo_uuid('northgate-member-' || i), v_org, m, v_names[i], 'SAMPLE-' || lpad(i::text, 3, '0'),
+    values (private.demo_uuid('demo-member-' || i), v_org, m, v_names[i], 'SAMPLE-' || lpad(i::text, 3, '0'),
       (v_roles ->> v_titles[i])::uuid,
-      case when i = 1 then null when i in (2, 3) then private.demo_uuid('northgate-member-1')
-           when i = 4 then private.demo_uuid('northgate-member-2') when i between 5 and 7 then private.demo_uuid('northgate-member-4')
-           when i between 8 and 16 then private.demo_uuid('northgate-member-' || (4 + v_area)) else private.demo_uuid('northgate-member-4') end,
+      case when i = 1 then null when i in (2, 3) then private.demo_uuid('demo-member-1')
+           when i = 4 then private.demo_uuid('demo-member-2') when i between 5 and 7 then private.demo_uuid('demo-member-4')
+           when i between 8 and 16 then private.demo_uuid('demo-member-' || (4 + v_area)) else private.demo_uuid('demo-member-4') end,
       (case when i in (15, 16, 18) then 'provisional' else 'regular' end)::public.employment_type, 'active',
       case when i in (15, 16) then v_today - 120 when i = 18 then v_today - 45 else v_today - (60 * i + 240) end)
     returning id into m;
@@ -102,10 +102,10 @@ begin
     (v_org, 'Housing fund', 'fixed', 20000, true);
 
   insert into public.products (org_id, name, description, price_minor, incentive_minor, needs_verification, auto_approve, sort) values
-    (v_org, 'Solar starter kit', '2 panels, inverter and installation', 4500000, 150000, true, false, 1),
-    (v_org, 'Battery add-on', 'Home battery for an existing kit', 2800000, 80000, true, false, 2),
-    (v_org, 'Solar lamp pack', '4 portable solar lamps', 350000, 15000, true, true, 3),
-    (v_org, 'Site survey booking', 'Free roof survey; paid as a lead', 0, 10000, false, false, 4);
+    (v_org, 'Starter package', 'Equipment and installation', 4500000, 150000, true, false, 1),
+    (v_org, 'Upgrade add-on', 'Add-on for an existing package', 2800000, 80000, true, false, 2),
+    (v_org, 'Basic package', 'Entry-level package, approved once the customer confirms', 350000, 15000, true, true, 3),
+    (v_org, 'Consultation booking', 'Free consultation, paid to the agent as a lead', 0, 10000, false, false, 4);
   select array_agg(id order by sort) into v_products from public.products where org_id = v_org;
 
   -- Leave first, so nobody has time on a day they were on leave.
@@ -188,7 +188,7 @@ begin
           case when v_status in ('for_approval', 'approved', 'rejected') and p.needs_verification then v_created + interval '5 hours' end,
           case when v_status = 'rejected' or (v_status = 'approved' and not p.auto_approve) then v_ops end,
           case when v_status in ('approved', 'rejected') then least(v_created + interval '1 day' + make_interval(hours => round(random() * 30)::int), now()) end,
-          case when v_status = 'rejected' then 'Customer is outside our installation area'
+          case when v_status = 'rejected' then 'Customer is outside our service area'
                when v_status = 'cancelled' then 'Customer changed their mind'
                when v_status = 'approved' and p.auto_approve then 'Approved automatically after the customer confirmed' end,
           v_created);
@@ -253,4 +253,4 @@ returns void language sql security definer set search_path = '' as $$
   from public.geofences g where g.site_id = p_site limit 1
 $$;
 
-revoke execute on function private.seed_field_demo, private.next_workday, private.seed_punch from public, authenticated;
+revoke execute on function private.seed_demo_company, private.next_workday, private.seed_punch from public, authenticated;

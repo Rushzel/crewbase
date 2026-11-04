@@ -103,19 +103,25 @@ isOneToOne: false
                   ]
                 },"clock_challenges": {
                   Row: {
-                    "actions": (string)[],"expires_at": string,"id": string,"issued_at": string,"membership_id": string,"used_at": string | null
+                    "checked_at": string | null,"colors": (string)[],"consent_at": string | null,"expires_at": string,"id": string,"issued_at": string,"membership_id": string,"purpose": string,"target_member": string,"used_at": string | null
                   }
                   ComputedFields: never
                   Insert: {
-                    "actions": (string)[],"expires_at"?: string,"id"?: string,"issued_at"?: string,"membership_id": string,"used_at"?: string | null
+                    "checked_at"?: string | null,"colors": (string)[],"consent_at"?: string | null,"expires_at"?: string,"id"?: string,"issued_at"?: string,"membership_id": string,"purpose"?: string,"target_member": string,"used_at"?: string | null
                   }
                   Update: {
-                    "actions"?: (string)[],"expires_at"?: string,"id"?: string,"issued_at"?: string,"membership_id"?: string,"used_at"?: string | null
+                    "checked_at"?: string | null,"colors"?: (string)[],"consent_at"?: string | null,"expires_at"?: string,"id"?: string,"issued_at"?: string,"membership_id"?: string,"purpose"?: string,"target_member"?: string,"used_at"?: string | null
                   }
                   Relationships: [
                     {
       foreignKeyName: "clock_challenges_membership_id_fkey"
       columns: ["membership_id"]
+isOneToOne: false
+      referencedRelation: "memberships"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "clock_challenges_target_member_fkey"
+      columns: ["target_member"]
 isOneToOne: false
       referencedRelation: "memberships"
       referencedColumns: ["id"]
@@ -255,20 +261,26 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
-                },"embedding_fingerprints": {
+                },"face_checks": {
                   Row: {
-                    "hash": string,"membership_id": string,"seen_at": string
+                    "challenge_id": string,"checked_at": string,"membership_id": string,"model_version": string,"passed": boolean,"reason": string | null,"scores": NonNullable<Json>,"similarity": number | null
                   }
                   ComputedFields: never
                   Insert: {
-                    "hash": string,"membership_id": string,"seen_at"?: string
+                    "challenge_id": string,"checked_at"?: string,"membership_id": string,"model_version": string,"passed": boolean,"reason"?: string | null,"scores"?: NonNullable<Json>,"similarity"?: number | null
                   }
                   Update: {
-                    "hash"?: string,"membership_id"?: string,"seen_at"?: string
+                    "challenge_id"?: string,"checked_at"?: string,"membership_id"?: string,"model_version"?: string,"passed"?: boolean,"reason"?: string | null,"scores"?: NonNullable<Json>,"similarity"?: number | null
                   }
                   Relationships: [
                     {
-      foreignKeyName: "embedding_fingerprints_membership_id_fkey"
+      foreignKeyName: "face_checks_challenge_id_fkey"
+      columns: ["challenge_id"]
+isOneToOne: true
+      referencedRelation: "clock_challenges"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "face_checks_membership_id_fkey"
       columns: ["membership_id"]
 isOneToOne: false
       referencedRelation: "memberships"
@@ -860,10 +872,10 @@ isOneToOne: false
 { Args: { "p_application": string,"p_reason": string }; Returns: undefined
                            },
 "clock_in":
-{ Args: { "p_accuracy_m"?: number,"p_age_s"?: number,"p_challenge"?: string,"p_embedding"?: (number)[],"p_lat"?: number,"p_liveness"?: Json,"p_lng"?: number,"p_site": string,"p_user_agent"?: string }; Returns: Json
+{ Args: { "p_accuracy_m"?: number,"p_age_s"?: number,"p_challenge"?: string,"p_lat"?: number,"p_lng"?: number,"p_site": string,"p_user_agent"?: string }; Returns: Json
                            },
 "clock_out":
-{ Args: { "p_accuracy_m"?: number,"p_age_s"?: number,"p_challenge"?: string,"p_embedding"?: (number)[],"p_lat"?: number,"p_liveness"?: Json,"p_lng"?: number,"p_org": string,"p_user_agent"?: string }; Returns: Json
+{ Args: { "p_accuracy_m"?: number,"p_age_s"?: number,"p_challenge"?: string,"p_lat"?: number,"p_lng"?: number,"p_org": string,"p_user_agent"?: string }; Returns: Json
                            },
 "create_organization":
 { Args: { "p_currency"?: string,"p_display_name": string,"p_name": string,"p_slug": string,"p_template"?: string,"p_timezone"?: string }; Returns: string
@@ -885,8 +897,8 @@ isOneToOne: false
 "end_break":
 { Args: { "p_org": string }; Returns: undefined
                            },
-"enroll_face":
-{ Args: { "p_consent": boolean,"p_embeddings": Json,"p_member": string,"p_model_version": string }; Returns: undefined
+"face_challenge":
+{ Args: { "p_challenge": string }; Returns: Json
                            },
 "face_status":
 { Args: { "p_member": string }; Returns: {
@@ -902,8 +914,8 @@ isOneToOne: false
 "invite_member":
 { Args: { "p_display_name": string,"p_email": string,"p_employment_type"?: Database["public"]['Enums']["employment_type"],"p_manager"?: string,"p_org": string,"p_role": string }; Returns: string
                            },
-"issue_clock_challenge":
-{ Args: { "p_org": string }; Returns: Json
+"issue_face_challenge":
+{ Args: { "p_consent"?: boolean,"p_member"?: string,"p_org": string,"p_purpose"?: string }; Returns: Json
                            },
 "leave_balances":
 { Args: { "p_member": string,"p_year"?: number }; Returns: {
@@ -930,6 +942,9 @@ isOneToOne: false
 { Args: { "p_period": string }; Returns: {
               "display_name": string,"membership_id": string,"reason": string
             }[]
+                           },
+"record_face_check":
+{ Args: { "p_challenge": string,"p_embedding": (number)[],"p_model_version": string,"p_passed": boolean,"p_reason": string,"p_scores": Json,"p_user": string }; Returns: Json
                            },
 "reissue_payslip":
 { Args: { "p_member": string,"p_period": string }; Returns: string

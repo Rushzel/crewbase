@@ -1,6 +1,38 @@
 import { describe, expect, it } from "vitest";
 import { type Rgb, hexToRgb, makeImage } from "./image";
-import { detectBlink, eyeOpenness, flashResponse, type FlashFrame } from "./signals";
+import { detectBlink, eyeOpenness, flashResponse, followsSchedule, type FlashFrame, type Labelled } from "./signals";
+
+describe("capture schedule", () => {
+  // What the capture screen sends: 3 still, about 18 blink, then 2 per colour in order.
+  const good: Labelled[] = [
+    ...Array.from({ length: 3 }, () => ({ phase: "still" as const })),
+    ...Array.from({ length: 18 }, () => ({ phase: "blink" as const })),
+    ...[0, 0, 1, 1, 2, 2, 3, 3, 4, 4].map((step) => ({ phase: "flash" as const, step })),
+  ];
+
+  it("accepts the capture screen's own order", () => {
+    expect(followsSchedule(good, 5)).toBe(true);
+  });
+
+  it("refuses colour frames relabelled to fit the sequence", () => {
+    const swapped = good.map((f, i) => (i === good.length - 1 ? { phase: "flash" as const, step: 0 } : f));
+    expect(followsSchedule(swapped, 5)).toBe(false);
+  });
+
+  it("refuses frames moved between steps", () => {
+    const moved = [...good.slice(0, 3), good[good.length - 1], ...good.slice(3, -1)];
+    expect(followsSchedule(moved, 5)).toBe(false);
+  });
+
+  it("refuses extra or missing colour frames", () => {
+    expect(followsSchedule([...good, { phase: "flash", step: 4 }], 5)).toBe(false);
+    expect(followsSchedule(good.slice(0, -1), 5)).toBe(false);
+  });
+
+  it("refuses a check with too few still or blink frames", () => {
+    expect(followsSchedule(good.filter((f) => f.phase !== "blink"), 5)).toBe(false);
+  });
+});
 
 const W = 160, H = 160;
 const FACE = { x: 40, y: 30, w: 80, h: 100 };

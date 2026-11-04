@@ -102,3 +102,21 @@ export function flashResponse(frames: FlashFrame[], minScore = 0.5, minLead = 0.
 
 // The colours a challenge may use: far apart in hue, so each step moves the skin's colour clearly.
 export const FLASH_PALETTE = ["#ff0000", "#00ff00", "#0000ff", "#ffff00", "#ff00ff", "#00ffff"];
+
+// ---------- Capture schedule ----------
+
+// The phone must follow the fixed capture schedule exactly: still pictures, then blink pictures, then
+// two pictures per colour, in the challenge's order. Labels that don't fit are refused, so frames
+// can't be rearranged to match a sequence after the fact.
+export type Labelled = { phase: "still" | "blink" | "flash"; step?: number };
+
+export function followsSchedule(frames: Labelled[], colorCount: number): boolean {
+  const order = { still: 0, blink: 1, flash: 2 } as const;
+  for (let i = 1; i < frames.length; i++) if (order[frames[i].phase] < order[frames[i - 1].phase]) return false;
+  const still = frames.filter((f) => f.phase === "still").length;
+  const blink = frames.filter((f) => f.phase === "blink").length;
+  const flash = frames.filter((f) => f.phase === "flash");
+  if (still < 2 || still > 6 || blink < 5 || blink > 30) return false;
+  if (flash.length !== colorCount * 2) return false;
+  return flash.every((f, i) => f.step === Math.floor(i / 2));
+}

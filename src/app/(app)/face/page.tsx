@@ -25,11 +25,11 @@ export default async function FacePage({ searchParams }: PageProps<"/face">) {
       <div className="grid gap-4 lg:grid-cols-[1fr_1fr]">
         {target ? (
           <div>
-            <FaceEnroll key={target.membership_id} memberId={target.membership_id} personName={target.display_name} enrolled={Boolean(status.get(target.membership_id)?.enrolled)} />
+            <FaceEnroll key={target.membership_id} orgId={org.id} memberId={target.membership_id} personName={target.display_name} enrolled={Boolean(status.get(target.membership_id)?.enrolled)} />
             <Link href="/face" className="mt-2 inline-block text-sm text-brand">Back to my own</Link>
           </div>
         ) : (
-          <FaceEnroll memberId={me.id} enrolled={Boolean(mine?.enrolled)} />
+          <FaceEnroll orgId={org.id} memberId={me.id} enrolled={Boolean(mine?.enrolled)} />
         )}
         <div className="space-y-4">
           {enrollsOthers && others.length > 0 && (
@@ -52,17 +52,18 @@ export default async function FacePage({ searchParams }: PageProps<"/face">) {
           <div className="card text-sm">
             <h2 className="font-semibold">What is stored</h2>
             <ul className="mt-2 list-disc space-y-1 pl-5 text-muted">
-              <li>A list of numbers describing the face, averaged from five captures. No photo is stored.</li>
-              <li>Nobody can read those numbers through the app, including owners. Only the database&apos;s time-in check compares against them.</li>
+              <li>128 numbers describing the face, made on our server from a few seconds of pictures. No photo is kept.</li>
+              <li>Nobody can read those numbers through the app, including owners. Only the database compares against them.</li>
               <li>The consent and the date of enrollment.</li>
               {org.is_demo && <li>In this demo, enrollments are deleted automatically after 24 hours.</li>}
             </ul>
             <h2 className="mt-4 font-semibold">Your status</h2>
             <p className="mt-1 text-muted">{mine?.enrolled ? `Enrolled on ${formatDate(mine.enrolled_at)}.` : "Not enrolled yet."}</p>
-            <h2 className="mt-4 font-semibold">Limits</h2>
+            <h2 className="mt-4 font-semibold">How the check works</h2>
             <p className="mt-1 text-muted">
-              The liveness check runs in the browser and stops photos and screens held up to the camera. Because it runs on the
-              device, it isn&apos;t a certified biometric check; the server&apos;s one-time challenge and replay check make tampering detectable.
+              Your phone only takes the pictures. Our server checks them: the same face in every picture, a blink, no photo or screen
+              held up, and your skin reflecting the screen&apos;s colours in the order it chose. Only the server can record a pass.
+              It isn&apos;t a certified biometric check, and its limits are still being measured with real cameras.
             </p>
           </div>
         </div>

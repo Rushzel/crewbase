@@ -40,7 +40,8 @@ Updated 4 Nov 2026.
   - template choice when a business is set up.
 - **Demo.** One made-up business, Demo Company: field employees in three areas, with an account for each of the five roles. (The café demo was removed on 4 Nov at Kidd's request.)
 - **Also:** a roles editor (permission changes are audited one by one), invitation emails, and editing a sale's customer details.
-- **Tests: 309 database, 17 unit and 19 end-to-end, all passing. Lint, types and the production build pass.**
+- **Face check version 2 (5 Nov):** decided on the server with free open models (YuNet, SFace, MiniFASNet), bank-style liveness (a blink, then a random screen-colour sequence the skin must reflect), and only the server may record a pass. See `docs/FACE-V2.md`.
+- **Tests: 324 database, 32 unit and 19 end-to-end, all passing. Lint, types and the production build pass.**
 
 ## Test results
 | File | Tests | Covers |
@@ -71,6 +72,7 @@ Updated 4 Nov 2026.
 9. A demo leave request was silently dropped whenever its date fell on a Sunday, so the demo looked different depending on the day.
 10. Saving settings failed with "permission denied": the new settings columns were missing from the list of columns owners may update. The database tests changed settings as the database owner, so only the browser test caught it; a database test now changes them as a signed-in owner.
 11. **Found by the security review plugin:** a manager permission also worked on the holder's own record, so a manager or leader could approve their own correction or timesheet, or edit their own hours, and be paid for them. Since phase 1, the shared permission check refuses your own record for every manager action except the owner's, and a test covers it.
+12. **Found by the security review plugin:** the first version of the new face check didn't confirm that every blink and colour frame showed the same person as the still frames, and trusted the phone's labels for which colour each frame was taken under. Every frame is now matched and spoof-checked, and frames must follow the fixed capture schedule exactly.
 
 ## Decisions to review
 1. **Product name "Crewbase"** is a placeholder, set in one constant: `src/lib/brand.ts`.
@@ -82,9 +84,9 @@ Updated 4 Nov 2026.
 7. Sample deductions use generic names with illustrative rates labelled "(sample rate)".
 8. **Demo sign-ins:** `owner@demo.crewbase.example`, and the same with `finance`, `hr`, `leader` or `employee` in place of `owner`. The password is `crewbase-demo`, and these accounts can't change their email or password.
 9. The original capstone's real names, company and data are not used anywhere.
-10. The liveness action "smile" became "open mouth", because the face library has no smile gesture.
-11. The face match threshold defaults to 0.60 and **isn't calibrated on real cameras yet**.
-12. "Turn left" hasn't been checked on a real camera; if it's mirrored, swap the mappings in `src/lib/face.ts`.
+10. ~~The liveness action "smile" became "open mouth", because the face library has no smile gesture.~~ Replaced by face check v2 (blink and screen colours).
+11. ~~The face match threshold defaults to 0.60 and **isn't calibrated on real cameras yet**.~~ Replaced: see decision 25.
+12. ~~"Turn left" hasn't been checked on a real camera; if it's mirrored, swap the mappings in `src/lib/face.ts`.~~ Replaced by face check v2.
 13. Payroll opens on the newest period.
 14. **Two role templates instead of one fixed set.** A café doesn't need leaders of areas and separate finance and HR roles; a field business does. Both are only starting points, and roles can be renamed.
 15. **A leader's team is the areas they lead plus their reports.** JedSkies used areas only; keeping reports as well means small businesses without areas still work.
@@ -103,13 +105,15 @@ Updated 4 Nov 2026.
     - areas and teams go to Human Resources;
     - corrections and time edits go to Leaders, for their own team;
     - sales approvals and products go to Finance.
+25. **Face check v2 thresholds** (cautious, not yet calibrated): match 0.40 (OpenCV suggests 0.363 for SFace), real face 0.6, same person across frames 0.4, blink dip 0.55, colour correlation 0.5 with a 0.15 lead over the background. Each needs testing with real cameras and people who agree.
+26. **Flash liveness is covered by at least one US patent** (US11093773). Fine for a portfolio; check before selling Crewbase.
 
 ## Blockers
 - None for local work. Pushing, Supabase cloud, Vercel and an email provider wait for Kidd (see `../portfolio-site/docs/ACCOUNTS-CHECKLIST.md`).
 
 ## Not done yet
 - **Manual liveness spoof test** (criterion 27): needs a person, a camera and made-up face photos.
-- **Real-camera check of the face flow** (decisions 11 and 12).
+- **Real-camera check of face check v2** (decision 25): a laptop webcam on localhost works for a first test.
 - **Screens:** bracket-table deductions.
 - **Reports and exports** (decision 22).
 

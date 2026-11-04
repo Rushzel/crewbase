@@ -9,11 +9,10 @@ const nextConfig: NextConfig = {
         as: "*.css",
       },
     },
-    // The face library's package points bundlers at its Node.js build; it only ever runs in the browser.
-    resolveAlias: {
-      "@vladmandic/human": "./node_modules/@vladmandic/human/dist/human.esm.js",
-    },
   },
+  // The face check runs on the server with native packages, and needs its model files deployed with it.
+  serverExternalPackages: ["onnxruntime-node", "sharp"],
+  outputFileTracingIncludes: { "/api/face/check": ["./models/face/**"] },
   // Leave attachments (up to 5 MB) are uploaded through a server action; the default limit is 1 MB.
   experimental: {
     serverActions: { bodySizeLimit: "6mb" },

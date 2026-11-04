@@ -40,12 +40,15 @@ Enrollment works the same way with an enrollment challenge. Consent is given whe
 - **Flash liveness needs a lit screen close to the face.** In bright sunlight the colour change is small; the check then fails and asks the person to move to shade or raise the screen brightness.
 - **At least one granted US patent** describes matching screen colours to the face's colour changes (US11093773). Fine for a portfolio; check patents before selling the product.
 - A determined attacker with a high-quality 3D mask could still pass. This is a workforce time check, not a bank account opening.
+- **Video injection:** a fully compromised phone or a virtual camera could feed made-up frames that follow the sequence it was shown. The server makes this harder (every frame must be the same live-looking person, in the fixed capture order, within 2 minutes) but can't rule it out; that needs a native app with device attestation.
+- **Flashing light:** the screen changes colour 5 times, under 2 changes a second (below the 3-a-second limit for photosensitive seizures), and the person is warned and can cancel first. Someone who can't use it should get a manager-reviewed alternative; the business can switch face check failures from block to flag.
 
 ## Tasks
 
 - [x] Plan (this file); models downloaded and their inputs and outputs confirmed.
-- [ ] Database: face challenges with colour sequences, `face_checks`, `record_face_check` for the service role only, punches require a passed check; tests.
-- [ ] Server engine: decode, YuNet detection, alignment, SFace, MiniFASNet, blink, flash; unit tests on synthetic frames.
-- [ ] Routes `POST /api/face/check` and `POST /api/face/enroll`.
-- [ ] Capture screen: oval, blink prompt, full-screen colour flashes.
-- [ ] Remove `@vladmandic/human`; update docs and decisions.
+- [x] Database: face challenges with colour sequences, `face_checks`, `record_face_check` for the service role only, punches require a passed check; tests.
+- [x] Server engine: decode, YuNet detection, alignment, SFace, MiniFASNet, blink, flash; unit tests on synthetic frames.
+- [x] Route `POST /api/face/check` (enrollment uses the same route with an enrollment challenge); plumbing smoke test `scripts/smoke-face-check.mjs`.
+- [x] Capture screen: oval, blink prompt, full-screen colour flashes, a warning about flashing light before it starts.
+- [x] Remove `@vladmandic/human`; update docs and decisions.
+- [ ] **Needs Kidd:** test with a real camera (a laptop webcam on http://localhost works; a phone needs HTTPS) and calibrate the thresholds with people who agree to it.

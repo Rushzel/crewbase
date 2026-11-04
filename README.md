@@ -19,7 +19,7 @@ It's a rebuild of **MyJedSkies**, a team capstone project (four students, July 2
 ## Try it
 
 ```bash
-npm install                 # also copies the face models into public/models
+npm install                 # also downloads the face models into models/face (checksums verified)
 npx supabase start          # local database in Docker, with migrations and demo data
 npm run dev                 # http://localhost:3000
 ```
@@ -41,8 +41,8 @@ The original checked rules in PHP controllers and in the browser. Anyone who cal
 | A person and an area must belong to the same business | Enforced by composite foreign keys, so even the database owner can't mix businesses | `member_sites` |
 | Members can't write time entries, breaks or evidence; punches are functions that use `now()` | The original trusted a "face verified" flag from the browser; server time also stops clock tricks | `20261028000300_time.sql` |
 | Location check in PostGIS with the reading's accuracy and age | The original ignored accuracy, so a reading good to 2 km counted like one good to 5 m | `check_location` |
-| Face match done by the database against an embedding nobody can read | The original sent each person's stored face data to their own browser | `face_enrollments` has no select policy |
-| One-use, 60-second liveness challenge with the actions in order | A photo held to the camera passed the original's single-frame match | `issue_clock_challenge`, `verify_punch` |
+| The face check is decided on the server; only the server's key can record a pass, and the database matches the face itself against an embedding nobody can read | The original trusted a "face verified" flag from the browser and sent each person's stored face data to their own phone | `record_face_check` (service role only), `face_checks`, `face_enrollments` has no select policy |
+| Bank-style liveness: a blink, then a random sequence of screen colours the skin must reflect; one use, 2 minutes | A photo held to the camera passed the original's single-frame match | `issue_face_challenge`, `verify_punch`, `src/lib/face-server` |
 | Blocked attempts are recorded, not just refused | Failed checks are useful evidence and feed the analytics | `clock_events.accepted = false` |
 | Corrections carry the times the person says they worked; approval re-checks overlaps | The original guessed times (5:00 AM, 5:00 PM) from keywords in the reason | `submit_request`, `approve_request` |
 | Change log, evidence and audit log are append-only | Records of who changed what must not be editable | `block_change` triggers |
@@ -64,7 +64,7 @@ The interface hides what you can't do, but only for convenience. The database is
 - **A team is the areas you lead plus your reports.** Field businesses organise by area, as JedSkies did; small businesses organise by who reports to whom. One rule covers both.
 - **Failed location checks flag, failed face checks block (by default).** Location fails for honest reasons (indoors, weak signal), so it goes to a manager instead of stopping work. A face mismatch is much stronger evidence. Both are settings.
 - **Balanced and strict edge rules.** Balanced accepts a reading just outside the fence when its accuracy circle reaches inside; strict needs the whole accuracy circle inside. Businesses with tight sites can choose strict.
-- **Liveness in the browser, with the server in charge.** A paid liveness service needs approval and costs money per check. The browser runs anti-spoofing and liveness models, but the server issues the challenge, checks the order and timing, and matches the face. The limit is written down instead of hidden (see below).
+- **The face check runs on our server, with free open models.** The phone only captures a few seconds of pictures: a blink, then the screen flashing colours chosen by the server. The server finds the face (YuNet), checks it's the same live person throughout and not a photo or screen (MiniFASNet), confirms the blink and that the skin reflected the colours in order, and builds the face description (SFace). This is how banking apps prove a live person, without a paid service. Details: `docs/FACE-V2.md`.
 - **Timesheet approval before payroll.** The original business's team leaders checked each person's daily time record against their own notes by hand in chat. Here the manager approves a timesheet on one screen, and a period can't lock until every timesheet is approved (or the owner overrides with a reason).
 - **Pay calculated day by day.** A raise in the middle of a period applies only from its date, and payslips keep a snapshot of the rates they used.
 - **Analytics that are fair and explained.** People are compared with their team's median, not raw totals; under 10 days shows "not enough data"; every flag names the rule that raised it; the forecast states its method and range. The original's forecast called a placeholder web address, so it always used a fallback.
@@ -73,7 +73,7 @@ The interface hides what you can't do, but only for convenience. The database is
 ## Honest limits
 
 - **Location:** a browser can't detect a fake-location app. Accuracy, freshness and impossible-travel checks raise the effort, and flagged punches go to a manager.
-- **Liveness:** it runs on the person's device, so someone who rewrites the page could send a forged result. The one-use challenge, the timing check, the replay check and the evidence trail make that detectable, not impossible. It isn't a certified biometric product.
+- **Liveness:** not yet calibrated with real cameras, so its thresholds are cautious defaults. A fully compromised phone that injects fake video can beat any browser-based check; that needs a native app with device attestation. Flash liveness also needs a lit screen near the face, so it struggles in direct sunlight.
 - **Sign-in lockout and idle timeout** (asked for in the original test report) depend on Supabase plan features; the free plan has rate limiting but not an exact 5-attempt lock.
 - **Sample deductions** use generic names and illustrative rates labelled "(sample rate)". They are not current legal contribution or tax rates.
 - **Email:** confirmation links go to a local test mailbox. Going live needs an email provider; without one, the link is shown on screen to share.
@@ -94,7 +94,7 @@ The payroll tests use hand-calculated examples, for example: 16 regular hours at
 
 ## Stack
 
-Next.js 16 (App Router, TypeScript, Tailwind CSS 4) · Supabase (Postgres 17, Auth, row-level security, PostGIS, `pg_cron`) · `@vladmandic/human` for face and liveness in the browser · Leaflet and OpenStreetMap for maps · `@react-pdf/renderer` for payslips · Vitest, Playwright, pgTAP · GitHub Actions · Vercel.
+Next.js 16 (App Router, TypeScript, Tailwind CSS 4) · Supabase (Postgres 17, Auth, row-level security, PostGIS, `pg_cron`) · ONNX Runtime with YuNet, SFace and MiniFASNet for the face check on the server · Leaflet and OpenStreetMap for maps · `@react-pdf/renderer` for payslips · Vitest, Playwright, pgTAP · GitHub Actions · Vercel.
 
 ## Project layout
 

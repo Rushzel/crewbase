@@ -47,3 +47,6 @@ next-env.d.ts
 /test-results/
 /playwright-report/
 !.env.example
+
+# Face models for the server (downloaded by scripts/fetch-face-models.mjs)
+/models/

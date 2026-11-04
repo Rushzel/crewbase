@@ -167,16 +167,15 @@ select is(pg_temp.line('rio', 'Absences%'), '1.00 days = 60000', 'only the misse
 -- Criterion 59: a leader enrolls faces in their area only, and only with consent.
 select pg_temp.login('05');
 set local role authenticated;
-select throws_ok($$ select public.enroll_face(pg_temp.id('pia'),
-  jsonb_build_array(to_jsonb(pg_temp.embedding(1, 0.02)), to_jsonb(pg_temp.embedding(2, 0.02)), to_jsonb(pg_temp.embedding(3, 0.02))),
-  'test-model-1', false) $$, 'P0001', null, 'not without consent');
-select lives_ok($$ select public.enroll_face(pg_temp.id('pia'),
-  jsonb_build_array(to_jsonb(pg_temp.embedding(1, 0.02)), to_jsonb(pg_temp.embedding(2, 0.02)), to_jsonb(pg_temp.embedding(3, 0.02))),
-  'test-model-1', true) $$, 'the leader enrolls someone in their area');
-select throws_ok($$ select public.enroll_face(pg_temp.id('far'),
-  jsonb_build_array(to_jsonb(pg_temp.embedding(1, 0.02)), to_jsonb(pg_temp.embedding(2, 0.02)), to_jsonb(pg_temp.embedding(3, 0.02))),
-  'test-model-1', true) $$, '42501', null, 'but not someone in another area');
+select throws_ok($$ select public.issue_face_challenge(pg_temp.id('org'), 'enroll', pg_temp.id('pia'), false) $$,
+  'P0001', null, 'not without consent');
+select lives_ok($$ select public.issue_face_challenge(pg_temp.id('org'), 'enroll', pg_temp.id('pia'), true) $$,
+  'the leader starts an enrollment for someone in their area');
+select throws_ok($$ select public.issue_face_challenge(pg_temp.id('org'), 'enroll', pg_temp.id('far'), true) $$,
+  '42501', null, 'but not for someone in another area');
 reset role;
+select is((select target_member from public.clock_challenges where purpose = 'enroll' order by issued_at desc limit 1),
+  pg_temp.id('pia'), 'the enrollment is for the team member, started by the leader');
 
 -- Criterion 60: probation.
 update public.memberships set employment_type = 'provisional', hired_on = current_date - interval '7 months' where id = pg_temp.id('far');

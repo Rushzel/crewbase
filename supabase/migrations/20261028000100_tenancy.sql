@@ -64,7 +64,8 @@ create table public.org_settings (
   regular_minutes_per_day smallint not null default 480 check (regular_minutes_per_day between 60 and 1440),
   overtime_multiplier numeric(4, 2) not null default 1.25 check (overtime_multiplier between 1 and 4),
   default_start_time time not null default '08:00',
-  face_threshold numeric(4, 3) not null default 0.600 check (face_threshold between 0.3 and 0.99),
+  -- SFace cosine similarity; OpenCV suggests 0.363, so 0.40 is a cautious start until calibrated.
+  face_threshold numeric(4, 3) not null default 0.400 check (face_threshold between 0.3 and 0.99),
   liveness_required boolean not null default true,
   location_max_accuracy_m smallint not null default 50 check (location_max_accuracy_m between 5 and 500),
   location_mode public.location_mode not null default 'balanced',

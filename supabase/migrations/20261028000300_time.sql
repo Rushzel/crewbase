@@ -45,14 +45,22 @@ create table public.breaks (
 );
 create unique index breaks_one_open on public.breaks (entry_id) where break_end is null;
 
--- Server-issued liveness challenge: two actions in a random order, usable once, for 60 seconds.
+-- A face check starts with a challenge from the database: a random sequence of screen colours
+-- the person's skin must reflect. The phone captures frames; the server checks them and records the
+-- result in face_checks. `membership_id` asked for it; `target_member` is whose face (the same person,
+-- except when a leader enrolls someone in their team).
 create table public.clock_challenges (
   id uuid primary key default gen_random_uuid(),
   membership_id uuid not null references public.memberships (id) on delete cascade,
-  actions text[] not null,
+  target_member uuid not null references public.memberships (id) on delete cascade,
+  purpose text not null default 'clock' check (purpose in ('clock', 'enroll')),
+  colors text[] not null check (cardinality(colors) between 3 and 10),
+  consent_at timestamptz,
   issued_at timestamptz not null default now(),
-  expires_at timestamptz not null default now() + interval '60 seconds',
-  used_at timestamptz
+  expires_at timestamptz not null default now() + interval '2 minutes',
+  checked_at timestamptz,
+  used_at timestamptz,
+  check (purpose <> 'enroll' or consent_at is not null)
 );
 
 -- The enrolled face embedding. No policy grants select on this table to anyone:
@@ -68,12 +76,17 @@ create table public.face_enrollments (
   expires_at timestamptz
 );
 
--- Hashes of live embeddings already used, to reject a replayed number list.
-create table public.embedding_fingerprints (
+-- The server's verdict on one challenge's frames. Written only by record_face_check, which only the
+-- server (holding the secret key) may call. Scores and reasons only: no photo is ever stored.
+create table public.face_checks (
+  challenge_id uuid primary key references public.clock_challenges (id) on delete cascade,
   membership_id uuid not null references public.memberships (id) on delete cascade,
-  hash text not null,
-  seen_at timestamptz not null default now(),
-  primary key (membership_id, hash)
+  passed boolean not null,
+  reason text,
+  similarity real,
+  scores jsonb not null default '{}',
+  model_version text not null,
+  checked_at timestamptz not null default now()
 );
 
 -- Evidence for every punch attempt, including blocked ones (entry_id is null when blocked).
@@ -192,47 +205,143 @@ $$;
 -- Face enrollment and liveness challenges.
 ------------------------------------------------------------------------------
 
--- p_embeddings: JSON array of embeddings (arrays of numbers) from the guided capture.
-create function public.enroll_face(p_member uuid, p_embeddings jsonb, p_model_version text, p_consent boolean)
-returns void language plpgsql security definer set search_path = '' as $$
+-- Starts a face check. 'clock' checks the caller before a time in or out; 'enroll' records a new face
+-- for the caller, or for someone in their team with face.enroll_others, and needs consent up front.
+create function public.issue_face_challenge(
+  p_org uuid, p_purpose text default 'clock', p_member uuid default null, p_consent boolean default false
+) returns jsonb language plpgsql volatile security definer set search_path = '' as $$
 declare
-  v_org uuid;
-  v_dims int;
-  v_avg real[];
-  v_count int := jsonb_array_length(p_embeddings);
-  v_is_demo boolean;
+  v_me uuid := private.my_membership(p_org);
+  v_target uuid := coalesce(p_member, v_me);
+  v_colors text[];
+  v_row public.clock_challenges;
 begin
+  if v_me is null then raise exception 'Not a member of this business' using errcode = '42501'; end if;
+  perform private.require_feature(p_org, 'face_verification');
+  if p_purpose not in ('clock', 'enroll') then raise exception 'Unknown purpose' using errcode = '22023'; end if;
+  if (select org_id from public.memberships where id = v_target) is distinct from p_org then
+    raise exception 'Member not found' using errcode = 'P0002';
+  end if;
+  if p_purpose = 'clock' and v_target <> v_me then
+    raise exception 'A face check before a time in is always your own' using errcode = '42501';
+  end if;
+  if p_purpose = 'enroll' then
+    if v_target <> v_me and not private.can_act_on_member(v_target, 'face.enroll_others') then
+      raise exception 'You can only enroll your own face' using errcode = '42501';
+    end if;
+    if p_consent is not true then
+      raise exception 'Consent is required before enrolling a face' using errcode = 'P0001';
+    end if;
+  end if;
+  v_colors := private.flash_sequence();
+  insert into public.clock_challenges (membership_id, target_member, purpose, colors, consent_at)
+  values (v_me, v_target, p_purpose, v_colors, case when p_purpose = 'enroll' then now() end)
+  returning * into v_row;
+  return jsonb_build_object('id', v_row.id, 'purpose', v_row.purpose, 'colors', to_jsonb(v_row.colors),
+    'expires_at', v_row.expires_at);
+end $$;
+
+-- Five colours from a palette of hues far apart, no colour twice in a row, at least four different.
+create function private.flash_sequence()
+returns text[] language plpgsql volatile set search_path = '' as $$
+declare
+  palette text[] := array['#ff0000', '#00ff00', '#0000ff', '#ffff00', '#ff00ff', '#00ffff'];
+  seq text[];
+begin
+  loop
+    seq := '{}';
+    for k in 1 .. 5 loop
+      seq := seq || palette[1 + floor(random() * 6)::int];
+    end loop;
+    exit when (select count(distinct c) from unnest(seq) c) >= 4
+      and not exists (select 1 from generate_subscripts(seq, 1) i where i > 1 and seq[i] = seq[i - 1]);
+  end loop;
+  return seq;
+end $$;
+
+-- What the server needs to check a challenge's frames, for the person who asked for it.
+create function public.face_challenge(p_challenge uuid)
+returns jsonb language plpgsql stable security definer set search_path = '' as $$
+declare
+  c public.clock_challenges;
+  v_org uuid;
+begin
+  select * into c from public.clock_challenges where id = p_challenge;
+  v_org := (select org_id from public.memberships where id = c.membership_id);
+  if c.id is null or c.membership_id is distinct from private.my_membership(v_org) then
+    raise exception 'Challenge not found' using errcode = 'P0002';
+  end if;
+  if c.checked_at is not null or c.expires_at <= now() then
+    raise exception 'This face check has expired; start again' using errcode = 'P0001';
+  end if;
+  return jsonb_build_object('id', c.id, 'purpose', c.purpose, 'colors', to_jsonb(c.colors),
+    'liveness_required', (select liveness_required from public.org_settings where org_id = v_org) or c.purpose = 'enroll');
+end $$;
+
+-- The server records its verdict on a challenge. Only the service role may call this: the phone can
+-- never mark a check as passed. For a time-in check the database itself compares the server's
+-- embedding with the enrolled one, using the business's threshold; for enrollment it stores the face.
+create function public.record_face_check(
+  p_challenge uuid, p_user uuid, p_passed boolean, p_reason text, p_embedding real[], p_scores jsonb, p_model_version text
+) returns jsonb language plpgsql volatile security definer set search_path = '' as $$
+declare
+  c public.clock_challenges;
+  v_org uuid;
+  v_is_demo boolean;
+  v_enrolled public.face_enrollments;
+  v_passed boolean := coalesce(p_passed, false);
+  v_reason text := p_reason;
+  v_similarity real;
+begin
+  select * into c from public.clock_challenges where id = p_challenge for update;
+  if c.id is null then raise exception 'Challenge not found' using errcode = 'P0002'; end if;
+  if (select user_id from public.memberships where id = c.membership_id) is distinct from p_user then
+    raise exception 'This challenge belongs to someone else' using errcode = '42501';
+  end if;
+  if c.checked_at is not null then raise exception 'This challenge was already checked' using errcode = 'P0001'; end if;
+  if c.expires_at <= now() then raise exception 'This face check has expired; start again' using errcode = 'P0001'; end if;
   select m.org_id, o.is_demo into v_org, v_is_demo
-  from public.memberships m join public.organizations o on o.id = m.org_id where m.id = p_member;
-  if v_org is null then raise exception 'Member not found' using errcode = 'P0002'; end if;
-  perform private.require_feature(v_org, 'face_verification');
-  if private.my_membership(v_org) is distinct from p_member
-     and not private.can_act_on_member(p_member, 'face.enroll_others') then
-    raise exception 'You can only enroll your own face' using errcode = '42501';
-  end if;
-  if p_consent is not true then
-    raise exception 'Consent is required before enrolling a face' using errcode = 'P0001';
-  end if;
-  if v_count < 3 then
-    raise exception 'Enrollment needs at least 3 captures' using errcode = '22023';
-  end if;
-  v_dims := jsonb_array_length(p_embeddings -> 0);
-  if exists (select 1 from jsonb_array_elements(p_embeddings) e where jsonb_array_length(e) <> v_dims) then
-    raise exception 'Captures have different sizes' using errcode = '22023';
+  from public.memberships m join public.organizations o on o.id = m.org_id where m.id = c.target_member;
+
+  if v_passed and (p_embedding is null or cardinality(p_embedding) <> 128) then
+    v_passed := false;
+    v_reason := 'no face data';
   end if;
 
-  select array_agg(avg_value order by dim) into v_avg from (
-    select (d.ord) as dim, avg((d.value)::real) as avg_value
-    from jsonb_array_elements(p_embeddings) e, jsonb_array_elements_text(e) with ordinality d(value, ord)
-    group by d.ord
-  ) t;
+  if c.purpose = 'clock' and v_passed then
+    select * into v_enrolled from public.face_enrollments
+    where membership_id = c.target_member and (expires_at is null or expires_at > now());
+    if v_enrolled.membership_id is null then
+      v_passed := false;
+      v_reason := 'not enrolled';
+    elsif v_enrolled.model_version <> p_model_version then
+      v_passed := false;
+      v_reason := 'enrolled with an older face model; enroll again';
+    else
+      v_similarity := private.cosine_similarity(p_embedding, v_enrolled.embedding);
+      if v_similarity < (select face_threshold from public.org_settings where org_id = v_org) then
+        v_passed := false;
+        v_reason := 'face does not match';
+      end if;
+    end if;
+  end if;
 
-  insert into public.face_enrollments (membership_id, embedding, model_version, frames_used, consent_at, expires_at)
-  values (p_member, v_avg, p_model_version, v_count, now(),
-          case when v_is_demo then now() + interval '24 hours' end)
-  on conflict (membership_id) do update set
-    embedding = excluded.embedding, model_version = excluded.model_version, frames_used = excluded.frames_used,
-    consent_at = excluded.consent_at, enrolled_by = auth.uid(), enrolled_at = now(), expires_at = excluded.expires_at;
+  if c.purpose = 'enroll' and v_passed then
+    insert into public.face_enrollments (membership_id, embedding, model_version, frames_used, consent_at, enrolled_by, expires_at)
+    values (c.target_member, p_embedding, p_model_version,
+            least(greatest(coalesce((p_scores ->> 'still_frames')::int, 1), 1), 20), c.consent_at, p_user,
+            case when v_is_demo then now() + interval '24 hours' end)
+    on conflict (membership_id) do update set
+      embedding = excluded.embedding, model_version = excluded.model_version, frames_used = excluded.frames_used,
+      consent_at = excluded.consent_at, enrolled_by = excluded.enrolled_by, enrolled_at = now(), expires_at = excluded.expires_at;
+  end if;
+
+  insert into public.face_checks (challenge_id, membership_id, passed, reason, similarity, scores, model_version)
+  values (c.id, c.target_member, v_passed, case when v_passed then null else coalesce(v_reason, 'check failed') end,
+          v_similarity, coalesce(p_scores, '{}'), p_model_version);
+  update public.clock_challenges set checked_at = now() where id = c.id;
+  return jsonb_build_object('passed', v_passed, 'reason', case when v_passed then null else coalesce(v_reason, 'check failed') end,
+    'similarity', v_similarity, 'purpose', c.purpose);
 end $$;
 
 -- Whether a member is enrolled; never returns the embedding.
@@ -245,19 +354,7 @@ language sql stable security definer set search_path = '' as $$
   where private.can_see_member(p_member)
 $$;
 
-create function public.issue_clock_challenge(p_org uuid)
-returns jsonb language plpgsql volatile security definer set search_path = '' as $$
-declare
-  v_member uuid := private.my_membership(p_org);
-  v_actions text[];
-  v_row public.clock_challenges;
-begin
-  if v_member is null then raise exception 'Not a member of this business' using errcode = '42501'; end if;
-  select array_agg(a order by random()) into v_actions
-  from (select a from unnest(array['blink', 'turn_left', 'turn_right', 'open_mouth']) a order by random() limit 2) t;
-  insert into public.clock_challenges (membership_id, actions) values (v_member, v_actions) returning * into v_row;
-  return jsonb_build_object('id', v_row.id, 'actions', to_jsonb(v_row.actions), 'expires_at', v_row.expires_at);
-end $$;
+
 
 ------------------------------------------------------------------------------
 -- Verification shared by time in and time out.
@@ -269,10 +366,9 @@ create type private.verdict as (
   face_similarity float8, liveness_passed boolean, face_result text
 );
 
--- p_liveness: {"passed": bool, "actions": ["blink", ...], "duration_ms": n} from the browser.
 create function private.verify_punch(
   p_member uuid, p_site uuid, p_lat float8, p_lng float8, p_accuracy_m float8, p_age_s float8,
-  p_challenge uuid, p_embedding real[], p_liveness jsonb
+  p_challenge uuid
 ) returns private.verdict
 language plpgsql volatile security definer set search_path = '' as $$
 declare
@@ -281,9 +377,8 @@ declare
   v_org uuid;
   v_loc record;
   v_last record;
-  v_enrolled public.face_enrollments;
   c public.clock_challenges;
-  v_hash text;
+  fc public.face_checks;
   v_problems text[] := '{}';
 begin
   select m.org_id into v_org from public.memberships m where m.id = p_member;
@@ -316,45 +411,28 @@ begin
     end if;
   end if;
 
-  -- Face and liveness.
+  -- Face and liveness: the server checked the frames for this challenge; use its verdict once.
   if private.feature_enabled(v_org, 'face_verification') then
-    select * into v_enrolled from public.face_enrollments
-    where membership_id = p_member and (expires_at is null or expires_at > now());
-
-    if v_enrolled.membership_id is null then
+    select * into c from public.clock_challenges
+    where id = p_challenge and target_member = p_member and purpose = 'clock' for update;
+    select * into fc from public.face_checks where challenge_id = c.id;
+    if not exists (select 1 from public.face_enrollments
+                   where membership_id = p_member and (expires_at is null or expires_at > now())) then
       v.face_result := 'not enrolled';
-    elsif p_embedding is null then
-      v.face_result := 'no face captured';
-    else
-      v.face_similarity := private.cosine_similarity(p_embedding, v_enrolled.embedding);
-      v_hash := md5(array_to_string(p_embedding, ','));
-      if exists (select 1 from public.embedding_fingerprints where membership_id = p_member and hash = v_hash) then
-        v.face_result := 'replayed face data';
-      elsif v.face_similarity < s.face_threshold then
-        v.face_result := 'face does not match';
-      end if;
-      insert into public.embedding_fingerprints (membership_id, hash) values (p_member, v_hash) on conflict do nothing;
+    elsif c.id is null or fc.challenge_id is null then
+      v.face_result := 'no face check';
+    elsif c.used_at is not null then
+      v.face_result := 'face check already used';
+    elsif fc.checked_at < now() - interval '2 minutes' then
+      v.face_result := 'face check expired';
+    elsif not fc.passed then
+      v.face_result := fc.reason;
     end if;
-
-    if s.liveness_required then
-      select * into c from public.clock_challenges where id = p_challenge and membership_id = p_member for update;
-      v.liveness_passed := c.id is not null
-        and c.used_at is null
-        and c.expires_at > now()
-        and coalesce((p_liveness ->> 'passed')::boolean, false)
-        and coalesce(p_liveness -> 'actions', '[]'::jsonb) = to_jsonb(c.actions)
-        and coalesce((p_liveness ->> 'duration_ms')::int, 0) >= 600 * cardinality(c.actions);
-      if c.id is not null then
-        update public.clock_challenges set used_at = now() where id = c.id and used_at is null;
-      end if;
-      if not v.liveness_passed and v.face_result is null then
-        v.face_result := case
-          when c.id is null then 'no liveness challenge'
-          when c.used_at is not null then 'liveness challenge already used'
-          when c.expires_at <= now() then 'liveness challenge expired'
-          else 'liveness check failed' end;
-      end if;
+    if c.id is not null then
+      update public.clock_challenges set used_at = now() where id = c.id and used_at is null;
     end if;
+    v.face_similarity := fc.similarity;
+    v.liveness_passed := coalesce(fc.passed, false);
 
     if v.face_result is not null then
       if s.face_fail_policy = 'block' then v.blocked := true; else v.flagged := true; end if;
@@ -390,8 +468,7 @@ $$;
 
 create function public.clock_in(
   p_site uuid, p_lat float8 default null, p_lng float8 default null, p_accuracy_m float8 default null,
-  p_age_s float8 default null, p_challenge uuid default null, p_embedding real[] default null,
-  p_liveness jsonb default null, p_user_agent text default null
+  p_age_s float8 default null, p_challenge uuid default null, p_user_agent text default null
 ) returns jsonb
 language plpgsql volatile security definer set search_path = '' as $$
 declare
@@ -418,7 +495,7 @@ begin
     raise exception 'Time in opens at %', to_char(v_opens, 'FMHH12:MI AM') using errcode = 'P0001';
   end if;
 
-  v := private.verify_punch(v_member, p_site, p_lat, p_lng, p_accuracy_m, p_age_s, p_challenge, p_embedding, p_liveness);
+  v := private.verify_punch(v_member, p_site, p_lat, p_lng, p_accuracy_m, p_age_s, p_challenge);
 
   if v.blocked then
     perform private.record_event(v_member, null, p_site, 'in', false, v, p_lat, p_lng, p_accuracy_m, p_age_s, p_challenge, p_user_agent);
@@ -434,8 +511,7 @@ end $$;
 
 create function public.clock_out(
   p_org uuid, p_lat float8 default null, p_lng float8 default null, p_accuracy_m float8 default null,
-  p_age_s float8 default null, p_challenge uuid default null, p_embedding real[] default null,
-  p_liveness jsonb default null, p_user_agent text default null
+  p_age_s float8 default null, p_challenge uuid default null, p_user_agent text default null
 ) returns jsonb
 language plpgsql volatile security definer set search_path = '' as $$
 declare
@@ -447,7 +523,7 @@ begin
   select * into e from public.time_entries where membership_id = v_member and clock_out is null for update;
   if e.id is null then raise exception 'You have no open entry' using errcode = 'P0001'; end if;
 
-  v := private.verify_punch(v_member, e.site_id, p_lat, p_lng, p_accuracy_m, p_age_s, p_challenge, p_embedding, p_liveness);
+  v := private.verify_punch(v_member, e.site_id, p_lat, p_lng, p_accuracy_m, p_age_s, p_challenge);
   if v.blocked then
     perform private.record_event(v_member, e.id, e.site_id, 'out', false, v, p_lat, p_lng, p_accuracy_m, p_age_s, p_challenge, p_user_agent);
     return jsonb_build_object('ok', false, 'reason', v.reason);
@@ -731,13 +807,13 @@ alter table public.time_entries enable row level security;
 alter table public.breaks enable row level security;
 alter table public.clock_challenges enable row level security;
 alter table public.face_enrollments enable row level security;
-alter table public.embedding_fingerprints enable row level security;
+alter table public.face_checks enable row level security;
 alter table public.clock_events enable row level security;
 alter table public.correction_requests enable row level security;
 alter table public.change_log enable row level security;
 
 revoke all on public.time_entries, public.breaks, public.clock_challenges, public.face_enrollments,
-  public.embedding_fingerprints, public.clock_events, public.correction_requests, public.change_log
+  public.face_checks, public.clock_events, public.correction_requests, public.change_log
   from anon, authenticated;
 grant select on public.time_entries, public.breaks, public.clock_events, public.correction_requests, public.change_log
   to authenticated;
@@ -758,9 +834,9 @@ do $$
 declare f text;
 begin
   foreach f in array array[
-    'enroll_face(uuid, jsonb, text, boolean)', 'face_status(uuid)', 'issue_clock_challenge(uuid)',
-    'clock_in(uuid, float8, float8, float8, float8, uuid, real[], jsonb, text)',
-    'clock_out(uuid, float8, float8, float8, float8, uuid, real[], jsonb, text)',
+    'issue_face_challenge(uuid, text, uuid, boolean)', 'face_challenge(uuid)', 'face_status(uuid)',
+    'clock_in(uuid, float8, float8, float8, float8, uuid, text)',
+    'clock_out(uuid, float8, float8, float8, float8, uuid, text)',
     'start_break(uuid)', 'end_break(uuid)',
     'submit_request(public.request_kind, uuid, text, timestamptz, timestamptz, int, uuid, text, uuid)',
     'approve_request(uuid, text)', 'reject_request(uuid, text)', 'withdraw_request(uuid)',
@@ -773,6 +849,10 @@ begin
 end $$;
 
 grant execute on all functions in schema private to authenticated;
+
+-- Only the server records face checks.
+revoke execute on function public.record_face_check(uuid, uuid, boolean, text, real[], jsonb, text) from public, anon, authenticated;
+grant execute on function public.record_face_check(uuid, uuid, boolean, text, real[], jsonb, text) to service_role;
 revoke execute on function private.close_missing_out() from authenticated, public;
 
 -- Run the missing time out check every 15 minutes (each site's own midnight).

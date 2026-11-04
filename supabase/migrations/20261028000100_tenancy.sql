@@ -330,6 +330,30 @@ create trigger role_permissions_protect_owner before delete on public.role_permi
 create trigger roles_protect_owner before update on public.roles
   for each row execute function private.protect_owner_role();
 
+-- role_permissions has no business column, so its audit entry takes the business from the role.
+-- Permissions written while a business is created or seeded aren't logged one by one.
+create function private.audit_role_permission()
+returns trigger language plpgsql security definer set search_path = '' as $$
+declare
+  v_role uuid := case when tg_op = 'DELETE' then old.role_id else new.role_id end;
+  v_value jsonb;
+  v_org uuid;
+  v_name text;
+begin
+  if current_setting('app.creating', true) = 'on' or current_setting('app.seeding', true) = 'on' then return null; end if;
+  -- A role (or business) being deleted takes its permissions with it; the role's own entry covers that.
+  select r.org_id, r.name into v_org, v_name from public.roles r join public.organizations o on o.id = r.org_id where r.id = v_role;
+  if v_org is null then return null; end if;
+  v_value := jsonb_build_object('role', v_name, 'permission', case when tg_op = 'DELETE' then old.permission else new.permission end);
+  insert into public.audit_log (org_id, action, table_name, row_id, old_value, new_value, reason)
+  values (v_org, lower(tg_op), 'role_permissions', v_role::text,
+          case when tg_op = 'DELETE' then v_value end, case when tg_op = 'INSERT' then v_value end,
+          nullif(current_setting('app.reason', true), ''));
+  return null;
+end $$;
+create trigger audit_role_permissions after insert or delete on public.role_permissions
+  for each row execute function private.audit_role_permission();
+
 ------------------------------------------------------------------------------
 -- Creating a business.
 ------------------------------------------------------------------------------
@@ -356,6 +380,7 @@ begin
   if p_template not in ('small', 'field') then
     raise exception 'Unknown template %', p_template using errcode = '22023';
   end if;
+  perform set_config('app.creating', 'on', true);
 
   insert into public.organizations (name, slug) values (trim(p_name), lower(trim(p_slug)))
   returning id into v_org;
@@ -377,6 +402,7 @@ begin
   insert into public.memberships (org_id, user_id, display_name, role_id, status)
   values (v_org, auth.uid(), trim(p_display_name), v_owner_role, 'active');
 
+  perform set_config('app.creating', 'off', true);
   return v_org;
 end $$;
 

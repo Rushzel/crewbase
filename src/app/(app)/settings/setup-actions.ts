@@ -3,6 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { getContext } from "@/lib/context";
+import { appUrl, sendMail } from "@/lib/mail";
+import { PRODUCT_NAME } from "@/lib/brand";
 import type { ActionResult } from "@/app/(app)/actions";
 
 // Setup actions for owners. Each one goes through a database function or a table guarded by
@@ -22,8 +24,14 @@ export async function inviteMember(_: ActionResult, form: FormData): Promise<Act
   });
   if (error) return done(error, "", "/settings/people");
   revalidatePath("/settings/people");
-  // Without an email service the link is shown once, for the owner to send.
-  return { ok: `Invited. Send them this link (shown once): /invite/${data}` };
+  const link = appUrl(`/invite/${data}`);
+  const sent = await sendMail(
+    p.data.email,
+    `You're invited to ${org.name}`,
+    `Hello ${p.data.name},\n\nYou've been invited to join ${org.name} on ${PRODUCT_NAME}.\n\nSign in or create an account with this email address, then open:\n\n${link}\n\nThe link works once and expires in 7 days.`,
+  );
+  // Without a mail server the link is shown once, for the person inviting to send.
+  return { ok: sent ? `Invitation emailed to ${p.data.email}.` : `Invited. No mail server is set up, so send them this link (shown once): ${link}` };
 }
 
 export async function saveMember(_: ActionResult, form: FormData): Promise<ActionResult> {
@@ -142,4 +150,44 @@ export async function saveLeaveType(id: string | null, _: ActionResult, form: Fo
     ? await supabase.from("leave_types").update(row).eq("id", id)
     : await supabase.from("leave_types").insert({ ...row, org_id: org.id });
   return done(error?.code === "23505" ? { message: "There's already a leave type with that name." } : error, "Saved.", "/settings/leave");
+}
+
+// Creates or updates a role: its name, whose records it sees, and its permissions. Each permission
+// added or removed is written to the audit log by the database.
+export async function saveRole(id: string | null, _: ActionResult, form: FormData): Promise<ActionResult> {
+  const { supabase, org } = await getContext();
+  const p = z.object({ name: z.string().trim().min(2, "Enter a role name.").max(40), scope: z.enum(["own", "team", "all"]) })
+    .safeParse(Object.fromEntries(form));
+  if (!p.success) return { error: p.error.issues[0].message };
+  const taken = { message: "There's already a role with that name." };
+  const wanted = new Set(form.getAll("perm").map(String));
+  let roleId = id;
+  if (roleId) {
+    const { error } = await supabase.from("roles").update({ name: p.data.name, scope: p.data.scope }).eq("id", roleId);
+    if (error) return done(error.code === "23505" ? taken : error, "", "/settings/roles");
+  } else {
+    const { data, error } = await supabase.from("roles").insert({ org_id: org.id, name: p.data.name, scope: p.data.scope }).select("id").single();
+    if (error) return done(error.code === "23505" ? taken : error, "", "/settings/roles");
+    roleId = data.id;
+  }
+  const { data: current } = await supabase.from("role_permissions").select("permission").eq("role_id", roleId);
+  const have = new Set((current ?? []).map((c) => c.permission as string));
+  const add = [...wanted].filter((w) => !have.has(w));
+  const remove = [...have].filter((h) => !wanted.has(h));
+  if (add.length) {
+    const { error } = await supabase.from("role_permissions").insert(add.map((permission) => ({ role_id: roleId!, permission: permission as never })));
+    if (error) return done(error, "", "/settings/roles");
+  }
+  if (remove.length) {
+    const { error } = await supabase.from("role_permissions").delete().eq("role_id", roleId).in("permission", remove as never[]);
+    if (error) return done(error, "", "/settings/roles");
+  }
+  return done(null, id ? "Role saved." : "Role added.", "/settings/roles");
+}
+
+export async function deleteRole(id: string): Promise<ActionResult> {
+  const { supabase } = await getContext();
+  const { error } = await supabase.from("roles").delete().eq("id", id);
+  if (error?.code === "23503") return { error: "People still have this role. Give them another role first." };
+  return done(error, "Role removed.", "/settings/roles");
 }

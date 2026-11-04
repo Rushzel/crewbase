@@ -39,7 +39,8 @@ Updated 4 Nov 2026.
   - the new settings;
   - template choice when a business is set up.
 - **Demo.** One made-up business, Demo Company: field agents in three areas, with an account for each of the six roles. (The café demo was removed on 4 Nov at Kidd's request.)
-- **Tests: 302 database, 17 unit and 18 end-to-end, all passing. Lint, types and the production build pass.**
+- **Also:** a roles editor (permission changes are audited one by one), invitation emails, and editing a sale's customer details.
+- **Tests: 304 database, 17 unit and 20 end-to-end, all passing. Lint, types and the production build pass.**
 
 ## Test results
 | File | Tests | Covers |
@@ -51,12 +52,12 @@ Updated 4 Nov 2026.
 | `05_payroll` | 36 | Review and lock, locked periods, hand-worked pay, totals, void and reissue, privacy |
 | `06_analytics_demo` | 23 | Hand-checked measures, "not enough data", team-only analytics, demo protection, demo reset |
 | `07_invitations` | 11 | Who may invite, hashed one-time tokens, matching email, expiry |
-| `08_teams` | 22 | Both templates and their permissions, area leaders, team visibility by area and by reports, same-business keys, audit |
+| `08_teams` | 24 | Both templates and their permissions, area leaders, team visibility by area and by reports, same-business keys, audit of area teams and of permission changes |
 | `09_leave` | 27 | Working days, allowance including pending, overlaps, attachments in your own folder, review rules, locked periods, withdrawing |
 | `10_sales` | 33 | Product rights, logging, unreadable token hashes, one-use and expiring links, auto-approval, follow-up, corrections, own-sale rule |
 | `11_attendance_rules` | 38 | Every daily status, shifts against working days, business rules, earliest time in, paid and unpaid leave and incentives on payslips, team leader face enrollment, probation, changing the new settings, audit access |
 | Vitest (`src/lib`) | 17 | Formatting, contrast check, analytics flags and forecast |
-| Playwright (`e2e`) | 18 | Demo sign-in for all six roles and their menus, redirects, device clock set to 2030, breaks, flagged punch, phone width, a team leader's view, areas, a sale from logging to customer confirmation to approval, leave from request to approval |
+| Playwright (`e2e`) | 20 | Demo sign-in for all six roles and their menus, a role built in the roles editor and found in the audit trail, an invitation arriving in the test mailbox, redirects, device clock set to 2030, breaks, flagged punch, phone width, a team leader's view, areas, a sale from logging to customer confirmation to approval, leave from request to approval |
 
 ## Bugs the tests caught (and fixed)
 1. Deleting an entry tried to update append-only evidence through a foreign key. Evidence now keeps the entry ID as a plain value.
@@ -104,8 +105,7 @@ Updated 4 Nov 2026.
 ## Not done yet
 - **Manual liveness spoof test** (criterion 27): needs a person, a camera and made-up face photos.
 - **Real-camera check of the face flow** (decisions 11 and 12).
-- **Screens:** a roles editor, bracket-table deductions, and editing a sale's customer details (the database function exists).
-- **Invitation emails:** the mail helper exists, but invitations still show a link to copy.
+- **Screens:** bracket-table deductions.
 - **Reports and exports** (decision 22).
 
 ## Next step

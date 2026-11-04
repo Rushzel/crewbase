@@ -39,13 +39,14 @@ test("a sale goes from logged to confirmed to approved", async ({ page, browser 
   const customer = `Test Customer ${Date.now()}`;
   await signIn(page, "staff");
   await page.goto("/sales");
-  const kit = await page.locator("#product option", { hasText: "Starter package" }).getAttribute("value");
-  await page.getByLabel("Product").selectOption(kit!);
-  await page.getByLabel("Customer name").fill(customer);
-  await page.getByLabel("Customer email").fill(`test.${Date.now()}@example.test`);
-  await page.getByRole("button", { name: "Log sale" }).click();
-  await expect(page.getByRole("status")).toContainText("Logged");
-  const link = await page.locator("code").first().textContent();
+  const form = page.locator("section", { hasText: "Log a sale" });
+  const kit = await form.locator("#product option", { hasText: "Starter package" }).getAttribute("value");
+  await form.getByLabel("Product").selectOption(kit!);
+  await form.getByLabel("Customer name").fill(customer);
+  await form.getByLabel("Customer email").fill(`test.${Date.now()}@example.test`);
+  await form.getByRole("button", { name: "Log sale" }).click();
+  await expect(form.getByRole("status")).toContainText("Logged");
+  const link = await form.locator("code").first().textContent();
   expect(link).toMatch(/\/verify\/[0-9a-f]{48}$/);
 
   // The customer, not signed in, opens the link and confirms with a button press.
@@ -91,6 +92,33 @@ test("leave goes from requested to approved", async ({ page }) => {
   await page.locator("li", { hasText: reason }).getByRole("button", { name: "Approve" }).click();
   // Decided requests leave the queue.
   await expect(page.locator("li", { hasText: reason })).toHaveCount(0);
+});
+
+test("the owner builds a role and the change is in the audit trail", async ({ page }) => {
+  const name = `Test role ${Date.now()}`;
+  await signIn(page, "owner");
+  await page.goto("/settings/roles");
+  const add = page.locator("section", { hasText: "Add a role" });
+  await add.getByLabel("Name").fill(name);
+  await add.getByLabel("Sees the records of").selectOption("team");
+  await add.getByLabel("Approve leave").check();
+  await add.getByRole("button", { name: "Add role" }).click();
+  await expect(add.getByRole("status")).toContainText("Role added");
+  await page.goto("/audit?table=role_permissions");
+  await expect(page.getByText(`${name}: leave.review`)).toBeVisible();
+});
+
+test("an invitation is emailed", async ({ page, request }) => {
+  const email = `invitee.${Date.now()}@example.test`;
+  await signIn(page, "hr");
+  await page.goto("/settings/people");
+  await page.locator('input[name="email"]').fill(email);
+  await page.locator('input[name="name"]').first().fill("Ivy Invitee");
+  await page.getByRole("button", { name: "Create invitation" }).click();
+  await expect(page.getByRole("status")).toContainText(`Invitation emailed to ${email}`);
+  // Supabase's local test mailbox.
+  const found = await request.get(`http://127.0.0.1:54324/api/v1/search?query=${encodeURIComponent(`to:${email}`)}`);
+  expect((await found.json()).messages_count).toBe(1);
 });
 
 test("an agent can't open area or team screens", async ({ page }) => {

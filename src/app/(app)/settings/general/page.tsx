@@ -111,7 +111,7 @@ export default async function SettingsPage() {
         </section>
 
         <section className="card">
-          <h2 className="mb-3 font-semibold">Roles</h2>
+          <h2 className="mb-3 font-semibold">Roles <a href="/settings/roles" className="ml-2 text-xs font-normal text-brand">Edit</a></h2>
           <ul className="space-y-3">
             {(roles ?? []).map((r) => (
               <li key={r.id}>

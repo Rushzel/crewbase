@@ -4,7 +4,7 @@ import { getContext } from "@/lib/context";
 import { Form } from "@/components/form";
 import { ResendButton, SaleForm } from "@/components/sale-form";
 import { Empty, PageHeader, Pill, STATUS_TONE, Stat, statusLabel } from "@/components/ui";
-import { cancelSale, decideSale } from "@/app/(app)/sales/actions";
+import { cancelSale, decideSale, updateSale } from "@/app/(app)/sales/actions";
 import { formatDate, formatMoney, todayIn } from "@/lib/format";
 
 export const metadata = { title: "Sales" };
@@ -24,7 +24,7 @@ export default async function SalesPage({ searchParams }: PageProps<"/sales">) {
   const [{ data: products }, { data: apps }] = await Promise.all([
     supabase.from("products").select("id, name, price_minor, needs_verification").eq("org_id", org.id).eq("active", true).order("sort").order("name"),
     supabase.from("customer_applications")
-      .select("id, membership_id, customer_name, customer_email, customer_phone, status, price_minor, incentive_minor, verified_at, decided_at, decision_note, created_at, resend_count, products(name), sites(name), memberships!customer_applications_membership_id_org_id_fkey(display_name)")
+      .select("id, membership_id, customer_name, customer_email, customer_phone, address, notes, status, price_minor, incentive_minor, verified_at, decided_at, decision_note, created_at, resend_count, products(name), sites(name), memberships!customer_applications_membership_id_org_id_fkey(display_name)")
       .eq("org_id", org.id).order("created_at", { ascending: false }).limit(500),
   ]);
   const all = apps ?? [];
@@ -109,6 +109,19 @@ export default async function SalesPage({ searchParams }: PageProps<"/sales">) {
                     </td>
                     <td className="min-w-40">
                       {a.membership_id === me.id && (a.status === "awaiting_verification" || a.status === "follow_up") && a.resend_count < 3 && <ResendButton id={a.id} />}
+                      {a.membership_id === me.id && ["awaiting_verification", "follow_up", "for_approval"].includes(a.status) && (
+                        <details className="mt-1 text-sm">
+                          <summary className="cursor-pointer text-muted">Edit details</summary>
+                          <Form action={updateSale.bind(null, a.id)} className="mt-2 grid min-w-64 gap-2">
+                            <input name="name" defaultValue={a.customer_name} className="field" aria-label="Customer name" required />
+                            <input name="email" type="email" defaultValue={a.customer_email} className="field" aria-label="Customer email" required />
+                            <input name="phone" defaultValue={a.customer_phone ?? ""} placeholder="Phone" className="field" aria-label="Phone" />
+                            <input name="address" defaultValue={a.address ?? ""} placeholder="Address" className="field" aria-label="Address" />
+                            <input name="notes" defaultValue={a.notes ?? ""} placeholder="Notes" className="field" aria-label="Notes" />
+                            <button className="btn-quiet">Save details</button>
+                          </Form>
+                        </details>
+                      )}
                       {a.membership_id === me.id && ["awaiting_verification", "follow_up", "for_approval"].includes(a.status) && (
                         <details className="mt-1 text-sm">
                           <summary className="cursor-pointer text-muted">Cancel</summary>

@@ -137,5 +137,21 @@ reset role;
 select is((select count(*)::int from public.audit_log where table_name = 'member_sites' and org_id = pg_temp.id('org')), 5,
   'area assignments are audited');
 
+-- Permission changes are audited one by one, with the role's name; creating the business isn't.
+select is((select count(*)::int from public.audit_log where table_name = 'role_permissions' and org_id = pg_temp.id('org')), 0,
+  'creating a business does not log every permission');
+select pg_temp.login('01');
+set local role authenticated;
+insert into public.role_permissions (role_id, permission)
+select id, 'leave.review' from public.roles where org_id = pg_temp.id('org') and name = 'Team Leader';
+delete from public.role_permissions
+where role_id = (select id from public.roles where org_id = pg_temp.id('org') and name = 'Team Leader') and permission = 'sales.log';
+reset role;
+select results_eq(
+  $$ select action || ':' || (coalesce(new_value, old_value) ->> 'role') || ':' || (coalesce(new_value, old_value) ->> 'permission')
+     from public.audit_log where table_name = 'role_permissions' and org_id = pg_temp.id('org') order by id $$,
+  array['insert:Team Leader:leave.review', 'delete:Team Leader:sales.log'],
+  'adding and removing a permission are both audited');
+
 select * from finish();
 rollback;

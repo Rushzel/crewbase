@@ -56,6 +56,28 @@ export async function resendLink(id: string): Promise<SaleResult> {
   return { ok: sent ? `New link emailed to ${app!.customer_email}.` : "New link (no mail server set up):", link: org.is_demo || !sent ? link : undefined };
 }
 
+// Corrects the customer's details before a decision. A new email address needs a new confirmation.
+export async function updateSale(id: string, _: ActionResult, form: FormData): Promise<ActionResult> {
+  const { supabase, org } = await getContext();
+  const p = z.object({
+    name: z.string().trim().min(2, "Enter the customer's name"),
+    email: z.email("Enter the customer's email"),
+    phone: z.string().trim().max(30).optional(),
+    address: z.string().trim().max(300).optional(),
+    notes: z.string().trim().max(1000).optional(),
+  }).safeParse(Object.fromEntries(form));
+  if (!p.success) return { error: p.error.issues[0].message };
+  const { data: token, error } = await supabase.rpc("update_application", {
+    p_application: id, p_customer_name: p.data.name, p_customer_email: p.data.email,
+    p_customer_phone: p.data.phone || undefined, p_address: p.data.address || undefined, p_notes: p.data.notes || undefined,
+  });
+  revalidatePath("/sales");
+  if (error) return { error: error.message };
+  if (!token) return { ok: "Saved." };
+  const { sent, link } = await emailLink(p.data.email, org.name, token);
+  return { ok: sent && !org.is_demo ? `Saved. A new confirmation link was emailed to ${p.data.email}.` : `Saved. The new email needs a new confirmation: ${link}` };
+}
+
 export async function cancelSale(id: string, _: ActionResult, form: FormData): Promise<ActionResult> {
   const { supabase } = await getContext();
   const { error } = await supabase.rpc("cancel_application", { p_application: id, p_reason: String(form.get("reason") ?? "") });

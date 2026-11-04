@@ -86,9 +86,9 @@ The interface hides what you can't do, but only for convenience. The database is
 
 | Suite | Command | Result |
 |---|---|---|
-| Database (pgTAP) | `npm run test:db` | 302 passing. Covers isolation, permissions, team visibility, time, location, face and liveness, and corrections. Also payroll worked examples (including leave and incentives), leave rules, sales and confirmation links, daily status, probation, analytics, the demo reset and invitations. |
+| Database (pgTAP) | `npm run test:db` | 304 passing. Covers isolation, permissions, team visibility, time, location, face and liveness, and corrections. Also payroll worked examples (including leave and incentives), leave rules, sales and confirmation links, daily status, probation, analytics, the demo reset and invitations. |
 | Unit (Vitest) | `npm test` | 17 passing: formatting, contrast check, analytics flags and forecast |
-| End-to-end (Playwright) | `npm run test:e2e` | 18 passing. Covers demo sign-in for all six roles and their menus, the clock ignoring a device set to 2030, breaks, a flagged punch, and phone width. Also a team leader seeing only their area, a sale going from logged to customer confirmation to approval, and leave going from request to approval. |
+| End-to-end (Playwright) | `npm run test:e2e` | 20 passing. Covers demo sign-in for all six roles and their menus, the clock ignoring a device set to 2030, breaks, a flagged punch, and phone width. Also a team leader seeing only their area, a sale going from logged to customer confirmation to approval, and leave going from request to approval. |
 
 The payroll tests use hand-calculated examples, for example: 16 regular hours at ₱100 plus 2 overtime hours at 1.25× is ₱1,850 gross; less a ₱50 fund and 10% tax is ₱1,615 net.
 

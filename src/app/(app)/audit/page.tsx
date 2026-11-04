@@ -7,7 +7,7 @@ import { formatDate, formatTime } from "@/lib/format";
 export const metadata = { title: "Audit trail" };
 
 const TABLES: Record<string, string> = {
-  memberships: "People", roles: "Roles", org_settings: "Settings", org_features: "Features", sites: "Areas",
+  memberships: "People", roles: "Roles", role_permissions: "Role permissions", org_settings: "Settings", org_features: "Features", sites: "Areas",
   member_sites: "Area teams", pay_rates: "Pay rates", deduction_rules: "Deductions", pay_periods: "Pay periods",
   leave_types: "Leave types", leave_requests: "Leave", products: "Products", customer_applications: "Sales",
 };
@@ -21,6 +21,12 @@ function changes(oldV: unknown, newV: unknown): string[] {
   return [...new Set([...Object.keys(o), ...Object.keys(n)])]
     .filter((k) => !HIDDEN.has(k) && JSON.stringify(o[k]) !== JSON.stringify(n[k]))
     .map((k) => k.replace(/_/g, " "));
+}
+
+// A role permission change, as "Team Leader: leave.review".
+function permissionChange(v: unknown): string | undefined {
+  const p = v as { role?: string; permission?: string } | null;
+  return p?.role && p.permission ? `${p.role}: ${p.permission}` : undefined;
 }
 
 // The append-only audit log. Nobody can edit or delete it, including owners.
@@ -64,7 +70,8 @@ export default async function AuditPage({ searchParams }: PageProps<"/audit">) {
             <tbody>
               {(rows ?? []).map((r) => {
                 const name = (r.new_value as { display_name?: string; name?: string } | null)?.display_name
-                  ?? (r.new_value as { name?: string } | null)?.name ?? (r.old_value as { name?: string } | null)?.name;
+                  ?? (r.new_value as { name?: string } | null)?.name ?? (r.old_value as { name?: string } | null)?.name
+                  ?? permissionChange(r.new_value ?? r.old_value);
                 return (
                   <tr key={r.id}>
                     <td className="whitespace-nowrap">{formatDate(r.at, tz)}<p className="text-xs text-muted">{formatTime(r.at, tz)}</p></td>

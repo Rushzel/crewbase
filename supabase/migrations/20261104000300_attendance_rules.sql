@@ -18,10 +18,15 @@ language sql stable security definer set search_path = '' as $$
     select os.*, (now() at time zone os.timezone)::date as today from public.org_settings os
     where os.org_id = p_org and p_org in (select private.my_orgs()) and p_to >= p_from and p_to - p_from <= 92
   ),
+  -- Only people whose role times in are expected at work, so a finance or HR role that never clocks
+  -- in is never absent. The owner role holds every permission, so an owner counts only when they
+  -- belong to an area (the only way anyone can time in).
   people as (
     select m.id, m.display_name, coalesce(m.hired_on, (m.created_at at time zone s.timezone)::date) as since
-    from public.memberships m, s
+    from public.memberships m join public.roles r on r.id = m.role_id, s
     where m.org_id = p_org and m.status = 'active' and m.id in (select private.visible_members())
+      and exists (select 1 from public.role_permissions rp where rp.role_id = m.role_id and rp.permission = 'time.clock')
+      and (not r.is_owner or exists (select 1 from public.member_sites ms where ms.membership_id = m.id))
   ),
   days as (
     select p.id, p.display_name, d::date as day

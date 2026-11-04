@@ -79,6 +79,9 @@ select is(pg_temp.status('pia', 4), 'absent', '3h is under the half-day minimum'
 select is(pg_temp.status('pia', 5), 'absent', 'an expected Saturday with no time is absent');
 select is(pg_temp.status('pia', 6), null, 'Sunday is not a working day, so it has no row');
 select is(pg_temp.status('pia', 7), 'on_leave', 'approved leave shows as leave');
+select is((select count(*)::int from public.attendance_days(pg_temp.id('org'), pg_temp.d(0), pg_temp.d(13))
+           where membership_id in (pg_temp.id('hr'), (select id from public.memberships where org_id = pg_temp.id('org') and user_id = '00000000-0000-0000-0000-000000001101'))),
+  0, 'people whose role never times in, such as HR and the owner''s, are never counted absent');
 reset role;
 
 -- Rio has a Sunday shift, so the working days don't apply that week.

@@ -105,6 +105,23 @@ select is(pg_temp.seen(), array['lead', 'north', 'peer', 'report'],
   'a leader sees their area and their reports, and not other areas');
 select ok(private.can_see_member(pg_temp.id('north')) and not private.can_see_member(pg_temp.id('south')),
   'the helper used by functions agrees');
+
+-- Separation of duties: a manager permission never works on your own record.
+select throws_ok($$ select public.admin_edit_entry((select id from public.time_entries where membership_id = pg_temp.id('lead')),
+  (current_date - 1) + time '07:00', (current_date - 1) + time '19:00', 0, 'Paying myself more') $$,
+  '42501', null, 'a leader cannot edit their own hours');
+select throws_ok($$ select public.admin_add_entry(pg_temp.id('lead'), pg_temp.id('n_site'),
+  (current_date - 2) + time '08:00', (current_date - 2) + time '17:00', 0, 'An extra day for me') $$,
+  '42501', null, 'or add hours for themself');
+select ok(not private.can_act_on_member(pg_temp.id('lead'), 'requests.review'),
+  'or approve their own corrections or timesheet');
+select lives_ok($$ select public.admin_edit_entry((select id from public.time_entries where membership_id = pg_temp.id('north')),
+  (current_date - 1) + time '08:10', (current_date - 1) + time '17:00', 0, 'Arrived 08:10, confirmed by the gate log') $$,
+  'but can edit a team member''s hours, with a reason');
+reset role;
+select pg_temp.login('01');
+set local role authenticated;
+select ok(private.can_act_on_member(pg_temp.id('owner'), 'time.edit'), 'the owner, who is the business, can act on their own record');
 reset role;
 
 select pg_temp.login('06');

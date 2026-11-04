@@ -40,7 +40,7 @@ Updated 4 Nov 2026.
   - template choice when a business is set up.
 - **Demo.** One made-up business, Demo Company: field employees in three areas, with an account for each of the five roles. (The café demo was removed on 4 Nov at Kidd's request.)
 - **Also:** a roles editor (permission changes are audited one by one), invitation emails, and editing a sale's customer details.
-- **Tests: 304 database, 17 unit and 19 end-to-end, all passing. Lint, types and the production build pass.**
+- **Tests: 309 database, 17 unit and 19 end-to-end, all passing. Lint, types and the production build pass.**
 
 ## Test results
 | File | Tests | Covers |
@@ -52,7 +52,7 @@ Updated 4 Nov 2026.
 | `05_payroll` | 36 | Review and lock, locked periods, hand-worked pay, totals, void and reissue, privacy |
 | `06_analytics_demo` | 23 | Hand-checked measures, "not enough data", team-only analytics, demo protection, demo reset |
 | `07_invitations` | 11 | Who may invite, hashed one-time tokens, matching email, expiry |
-| `08_teams` | 24 | Both templates and their permissions, area leaders, team visibility by area and by reports, same-business keys, audit of area teams and of permission changes |
+| `08_teams` | 29 | Both templates and their permissions, no manager permission on your own record, area leaders, team visibility by area and by reports, same-business keys, audit of area teams and of permission changes |
 | `09_leave` | 27 | Working days, allowance including pending, overlaps, attachments in your own folder, review rules, locked periods, withdrawing |
 | `10_sales` | 33 | Product rights, logging, unreadable token hashes, one-use and expiring links, auto-approval, follow-up, corrections, own-sale rule |
 | `11_attendance_rules` | 38 | Every daily status, shifts against working days, business rules, earliest time in, paid and unpaid leave and incentives on payslips, leader face enrollment, probation, changing the new settings, audit access |
@@ -70,6 +70,7 @@ Updated 4 Nov 2026.
 8. A loop variable named `t` clashed with a column of the same name in a demo seed, so the demo failed to load.
 9. A demo leave request was silently dropped whenever its date fell on a Sunday, so the demo looked different depending on the day.
 10. Saving settings failed with "permission denied": the new settings columns were missing from the list of columns owners may update. The database tests changed settings as the database owner, so only the browser test caught it; a database test now changes them as a signed-in owner.
+11. **Found by the security review plugin:** a manager permission also worked on the holder's own record, so a manager or leader could approve their own correction or timesheet, or edit their own hours, and be paid for them. Since phase 1, the shared permission check refuses your own record for every manager action except the owner's, and a test covers it.
 
 ## Decisions to review
 1. **Product name "Crewbase"** is a placeholder, set in one constant: `src/lib/brand.ts`.

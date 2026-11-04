@@ -167,11 +167,11 @@ begin
   select * into r from public.leave_requests where id = p_request for update;
   if r.id is null then raise exception 'Request not found' using errcode = 'P0002'; end if;
   perform private.require_feature(r.org_id, 'leave');
+  v_me := private.my_membership(r.org_id);
+  if v_me = r.membership_id then raise exception 'You cannot review your own leave' using errcode = '42501'; end if;
   if not private.can_act_on_member(r.membership_id, 'leave.review') then
     raise exception 'You cannot review this request' using errcode = '42501';
   end if;
-  v_me := private.my_membership(r.org_id);
-  if v_me = r.membership_id then raise exception 'You cannot review your own leave' using errcode = '42501'; end if;
   if r.status <> 'pending' then raise exception 'This request has already been decided' using errcode = 'P0001'; end if;
   if not p_approve and nullif(trim(p_note), '') is null then
     raise exception 'Say why the request is rejected' using errcode = '22023';

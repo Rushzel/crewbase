@@ -211,11 +211,11 @@ begin
   select * into a from public.customer_applications where id = p_application for update;
   if a.id is null then raise exception 'Application not found' using errcode = 'P0002'; end if;
   perform private.require_feature(a.org_id, 'sales');
+  v_me := private.my_membership(a.org_id);
+  if v_me = a.membership_id then raise exception 'You cannot approve your own sale' using errcode = '42501'; end if;
   if not private.can_act_on_member(a.membership_id, 'sales.review') then
     raise exception 'You cannot decide this application' using errcode = '42501';
   end if;
-  v_me := private.my_membership(a.org_id);
-  if v_me = a.membership_id then raise exception 'You cannot approve your own sale' using errcode = '42501'; end if;
   if a.status <> 'for_approval' then
     raise exception 'Only applications ready for approval can be decided' using errcode = 'P0001';
   end if;

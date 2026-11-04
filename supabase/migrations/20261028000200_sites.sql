@@ -87,11 +87,19 @@ returns boolean language sql stable security definer set search_path = '' as $$
   select exists (select 1 from private.visible_members() v where v = p_member)
 $$;
 
--- True when the caller has a permission and may see the member (used for edits).
+-- True when the caller has a permission and may use it on the member: edits, approvals, shifts.
+-- Never on their own record (a manager can't approve their own correction or timesheet, or edit
+-- their own hours), except the owner, who is the business. Actions people may take on their own
+-- record (enrolling their own face, logging their own output) check that separately.
 create function private.can_act_on_member(p_member uuid, p_permission public.app_permission)
 returns boolean language sql stable security definer set search_path = '' as $$
+  with org as (select org_id from public.memberships where id = p_member)
   select private.can_see_member(p_member)
-     and private.has_permission((select org_id from public.memberships where id = p_member), p_permission)
+     and private.has_permission((select org_id from org), p_permission)
+     and (p_member is distinct from private.my_membership((select org_id from org))
+          or exists (select 1 from public.memberships m join public.roles r on r.id = m.role_id
+                     where m.org_id = (select org_id from org) and m.user_id = auth.uid()
+                       and m.status = 'active' and r.is_owner))
 $$;
 
 grant execute on function private.visible_members(), private.can_see_member(uuid),

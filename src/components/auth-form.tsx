@@ -11,11 +11,13 @@ export function ActionForm({
   fields,
   submit,
   hidden,
+  children,
 }: {
   action: (state: FormState, form: FormData) => Promise<FormState>;
   fields: Field[];
   submit: string;
   hidden?: Record<string, string>;
+  children?: React.ReactNode;
 }) {
   const [state, formAction, pending] = useActionState(action, undefined);
   return (
@@ -32,6 +34,7 @@ export function ActionForm({
           {f.hint && <p className="mt-1 text-xs text-muted">{f.hint}</p>}
         </div>
       ))}
+      {children}
       {state?.error && <p role="alert" className="text-sm text-bad">{state.error}</p>}
       {state?.ok && <p className="text-sm text-good">{state.ok}</p>}
       <button className="btn-primary w-full" disabled={pending}>

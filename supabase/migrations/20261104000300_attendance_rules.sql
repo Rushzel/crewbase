@@ -11,7 +11,7 @@
 create function public.attendance_days(p_org uuid, p_from date, p_to date)
 returns table (
   membership_id uuid, display_name text, day date, expected boolean, status text,
-  first_in timestamptz, last_out timestamptz, worked_minutes int, late_minutes int, leave_type text
+  first_in timestamptz, last_out timestamptz, worked_minutes int, late_minutes int, leave_type text, working boolean
 )
 language sql stable security definer set search_path = '' as $$
   with s as (
@@ -78,7 +78,7 @@ language sql stable security definer set search_path = '' as $$
     f.first_in, f.last_out, f.minutes,
     case when f.first_in > f.starts_at + make_interval(mins => s.grace_minutes)
          then floor(extract(epoch from (f.first_in - f.starts_at)) / 60)::int else 0 end,
-    f.leave_type
+    f.leave_type, f.open
   from facts f cross join s
   where f.expected or f.first_in is not null or f.leave_type is not null
   order by f.display_name, f.day
@@ -103,3 +103,31 @@ begin
   return v_count;
 end $$;
 select cron.schedule('promote-provisional', '15 16 * * *', 'select private.promote_provisional()');   -- 00:15 in Manila
+
+-- Accepted and blocked time-in locations for a day, as latitude and longitude for maps.
+-- security invoker: the caller sees only the evidence row-level security lets them see.
+create function public.time_in_points(p_org uuid, p_day date)
+returns table (membership_id uuid, server_time timestamptz, accepted boolean, flagged boolean, reason text, lat float8, lng float8)
+language sql stable security invoker set search_path = '' as $$
+  select ce.membership_id, ce.server_time, ce.accepted, ce.flagged, ce.reason,
+    extensions.st_y(ce.location::extensions.geometry), extensions.st_x(ce.location::extensions.geometry)
+  from public.clock_events ce
+  join public.org_settings os on os.org_id = ce.org_id
+  where ce.org_id = p_org and ce.kind = 'in' and ce.location is not null
+    and (ce.server_time at time zone os.timezone)::date = p_day
+  order by ce.server_time
+$$;
+revoke execute on function public.time_in_points from public, anon;
+grant execute on function public.time_in_points to authenticated;
+
+-- The active people the caller can see (themself, their team or everyone), for pickers and lists.
+create function public.my_team(p_org uuid)
+returns table (membership_id uuid, display_name text, role_name text)
+language sql stable security definer set search_path = '' as $$
+  select m.id, m.display_name, r.name
+  from public.memberships m join public.roles r on r.id = m.role_id
+  where m.org_id = p_org and m.status = 'active' and m.id in (select private.visible_members())
+  order by m.display_name
+$$;
+revoke execute on function public.my_team from public, anon;
+grant execute on function public.my_team to authenticated;

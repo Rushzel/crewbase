@@ -9,23 +9,24 @@ export const metadata = { title: "Settings" };
 
 const FEATURES: { key: string; label: string; about: string }[] = [
   { key: "time_tracking", label: "Time tracking", about: "Time in, breaks and time out" },
-  { key: "geofence", label: "Location check", about: "Check each punch against the site's geofence" },
+  { key: "geofence", label: "Location check", about: "Check each punch against the area's boundary" },
   { key: "face_verification", label: "Face check", about: "Face match with a liveness challenge" },
   { key: "breaks", label: "Breaks", about: "Break and continue buttons" },
   { key: "corrections", label: "Correction requests", about: "People ask for fixes; managers approve" },
   { key: "scheduling", label: "Scheduling", about: "Shifts, lateness and absences" },
   { key: "payroll", label: "Payroll", about: "Pay periods and payslips" },
   { key: "analytics", label: "Analytics", about: "Attendance, punctuality, hours and forecasts" },
+  { key: "leave", label: "Leave", about: "Leave requests with yearly allowances and approval" },
+  { key: "sales", label: "Sales", about: "Products, customer applications, confirmation links and incentives" },
   { key: "output_tracking", label: "Output tracking", about: "A count you define, such as orders packed" },
 ];
 
+const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
 export default async function SettingsPage() {
   const { supabase, org, settings, can, has } = await getContext();
-  if (!can("settings.manage")) redirect("/today");
-  const [{ data: roles }, { data: sites }] = await Promise.all([
-    supabase.from("roles").select("id, name, scope, is_owner, role_permissions(permission)").eq("org_id", org.id).order("is_owner", { ascending: false }),
-    supabase.from("sites").select("id, name, active, geofences(kind, radius_m)").eq("org_id", org.id).order("name"),
-  ]);
+  if (!can("settings.manage")) redirect("/home");
+  const { data: roles } = await supabase.from("roles").select("id, name, scope, is_owner, role_permissions(permission)").eq("org_id", org.id).order("is_owner", { ascending: false });
 
   return (
     <>
@@ -66,7 +67,20 @@ export default async function SettingsPage() {
             <div><label className="label">Timezone</label><input name="timezone" className="field" defaultValue={settings.timezone} /></div>
             <div><label className="label">Regular hours a day</label><input type="number" name="regular_hours" step="0.5" className="field" defaultValue={settings.regular_minutes_per_day / 60} /></div>
             <div><label className="label">Overtime multiplier</label><input type="number" name="overtime_multiplier" step="0.05" className="field" defaultValue={settings.overtime_multiplier} /></div>
+            <div><label className="label">Start of the day (when there&apos;s no shift)</label><input type="time" name="default_start_time" className="field" defaultValue={settings.default_start_time.slice(0, 5)} /></div>
             <div><label className="label">Grace minutes before late</label><input type="number" name="grace_minutes" className="field" defaultValue={settings.grace_minutes} /></div>
+            <div><label className="label">Absent if in this many minutes late</label><input type="number" name="absent_after_minutes" className="field" defaultValue={settings.absent_after_minutes} /></div>
+            <div><label className="label">Full day: at least (hours)</label><input type="number" name="full_day_hours" step="0.25" className="field" defaultValue={settings.full_day_minutes / 60} /></div>
+            <div><label className="label">Half day: at least (hours)</label><input type="number" name="half_day_hours" step="0.25" className="field" defaultValue={settings.half_day_minutes / 60} /></div>
+            <div><label className="label">Earliest time in (blank for any time)</label><input type="time" name="earliest_clock_in" className="field" defaultValue={settings.earliest_clock_in?.slice(0, 5) ?? ""} /></div>
+            <fieldset className="sm:col-span-3">
+              <legend className="label">Working days (used when someone has no shifts that week)</legend>
+              <div className="flex flex-wrap gap-3 text-sm">
+                {DAYS.map((d, i) => (
+                  <label key={d} className="flex items-center gap-1"><input type="checkbox" name="work_days" value={i} defaultChecked={settings.work_days.includes(i)} /> {d}</label>
+                ))}
+              </div>
+            </fieldset>
             <div><label className="label">Location accuracy limit (m)</label><input type="number" name="location_max_accuracy_m" className="field" defaultValue={settings.location_max_accuracy_m} /></div>
             <div><label className="label">Edge rule</label>
               <select name="location_mode" className="field" defaultValue={settings.location_mode}>
@@ -85,6 +99,12 @@ export default async function SettingsPage() {
               </select>
             </div>
             <div><label className="label">Face match threshold (0.30 to 0.99)</label><input type="number" name="face_threshold" step="0.01" min="0.3" max="0.99" className="field" defaultValue={settings.face_threshold} /></div>
+            <div><label className="label">Probation (months before provisional staff become regular)</label><input type="number" name="probation_months" min="0" max="36" className="field" defaultValue={settings.probation_months} /></div>
+            <div><label className="label">Sales: follow up unconfirmed after (hours)</label><input type="number" name="follow_up_hours" min="1" max="720" className="field" defaultValue={settings.follow_up_hours} /></div>
+            <div className="grid grid-cols-2 gap-2">
+              <div><label className="label">Name for a work location</label><input name="area_label" className="field" defaultValue={settings.area_label} /></div>
+              <div><label className="label">Plural</label><input name="area_label_plural" className="field" defaultValue={settings.area_label_plural} /></div>
+            </div>
             <label className="flex items-center gap-2 text-sm sm:col-span-3"><input type="checkbox" name="liveness_required" defaultChecked={settings.liveness_required} /> Require the liveness challenge</label>
             <button className="btn-primary sm:col-span-3 sm:justify-self-start">Save settings</button>
           </Form>
@@ -102,17 +122,6 @@ export default async function SettingsPage() {
           </ul>
         </section>
 
-        <section className="card">
-          <h2 className="mb-3 font-semibold">Sites <a href="/settings/sites" className="ml-2 text-xs font-normal text-brand">Edit</a></h2>
-          <ul className="divide-y divide-line">
-            {(sites ?? []).map((s) => (
-              <li key={s.id} className="flex justify-between py-2 text-sm">
-                <span>{s.name}</span>
-                <span className="text-muted">{s.geofences?.length ? s.geofences.map((g) => (g.kind === "circle" ? `circle ${g.radius_m} m` : "polygon")).join(", ") : "no geofence"}</span>
-              </li>
-            ))}
-          </ul>
-        </section>
       </div>
     </>
   );

@@ -54,8 +54,43 @@ export const STATUS_TONE: Record<string, keyof typeof TONES> = {
   draft: "warn",
   final: "good",
   void: "bad",
+  // Daily attendance
+  present: "good",
+  late: "warn",
+  half_day: "warn",
+  absent: "bad",
+  on_leave: "info",
+  not_yet: "quiet",
+  rest_day: "quiet",
+  // Sales
+  awaiting_verification: "quiet",
+  follow_up: "warn",
+  for_approval: "info",
+  cancelled: "quiet",
 };
 
+const LABELS: Record<string, string> = {
+  awaiting_verification: "Waiting for customer",
+  follow_up: "Follow up",
+  for_approval: "Ready for approval",
+  not_yet: "Not in yet",
+  half_day: "Half day",
+  on_leave: "On leave",
+};
+
+export function initials(name: string) {
+  return name.split(" ").filter(Boolean).map((p) => p[0]).slice(0, 2).join("").toUpperCase();
+}
+
+export function Avatar({ name }: { name: string }) {
+  return (
+    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand/10 text-sm font-semibold text-brand">
+      {initials(name)}
+    </span>
+  );
+}
+
 export function statusLabel(s: string) {
+  if (LABELS[s]) return LABELS[s];
   return s.replace(/_/g, " ").replace(/^\w/, (c) => c.toUpperCase());
 }

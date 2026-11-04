@@ -10,7 +10,7 @@ export const metadata = { title: "Deductions" };
 
 export default async function DeductionsPage() {
   const { supabase, org, settings, can } = await getContext();
-  if (!can("payroll.run")) redirect("/today");
+  if (!can("payroll.run")) redirect("/home");
   const { data: rules } = await supabase.from("deduction_rules").select("*").eq("org_id", org.id).order("name");
   const describe = (r: NonNullable<typeof rules>[number]) =>
     r.kind === "fixed" ? `${formatMoney(Number(r.value), settings.currency)} per payslip`

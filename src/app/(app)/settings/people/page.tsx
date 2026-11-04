@@ -6,13 +6,13 @@ import { PageHeader, Pill, STATUS_TONE, statusLabel } from "@/components/ui";
 import { formatDate, formatMoney, todayIn } from "@/lib/format";
 import { SettingsTabs } from "@/components/settings-tabs";
 
-export const metadata = { title: "People and pay" };
+export const metadata = { title: "Accounts" };
 
 export default async function PeopleSettingsPage() {
   const { supabase, org, settings, can } = await getContext();
-  if (!can("people.manage")) redirect("/today");
+  if (!can("people.manage")) redirect("/home");
   const [{ data: members }, { data: roles }, { data: rates }] = await Promise.all([
-    supabase.from("memberships").select("id, display_name, employee_code, role_id, manager_id, employment_type, status").eq("org_id", org.id).order("display_name"),
+    supabase.from("memberships").select("id, display_name, employee_code, role_id, manager_id, employment_type, status, hired_on").eq("org_id", org.id).order("display_name"),
     supabase.from("roles").select("id, name").eq("org_id", org.id).order("name"),
     can("payroll.run") ? supabase.from("pay_rates").select("membership_id, basis, amount_minor, effective_from").eq("org_id", org.id).order("effective_from", { ascending: false }) : Promise.resolve({ data: [] }),
   ]);
@@ -21,7 +21,7 @@ export default async function PeopleSettingsPage() {
 
   return (
     <>
-      <PageHeader title="Settings" subtitle="People, roles, managers and pay rates." />
+      <PageHeader title="Accounts" subtitle="People, roles, managers, employment type and pay rates. Invitations replace passwords sent by email." />
       <SettingsTabs />
       <section className="card mb-4">
         <h2 className="mb-3 font-semibold">Invite someone</h2>
@@ -39,7 +39,10 @@ export default async function PeopleSettingsPage() {
           return (
             <details key={m.id} className="card">
               <summary className="flex cursor-pointer flex-wrap items-center justify-between gap-2">
-                <span className="font-medium">{m.display_name} <span className="text-sm text-muted">{(roles ?? []).find((r) => r.id === m.role_id)?.name}</span></span>
+                <span className="font-medium">
+                  {m.display_name} <span className="text-sm text-muted">{(roles ?? []).find((r) => r.id === m.role_id)?.name}</span>
+                  {m.employment_type === "provisional" && <span className="ml-2"><Pill tone="warn">Provisional</Pill></span>}
+                </span>
                 <span className="flex items-center gap-2 text-sm">
                   {rate && <span className="text-muted">{formatMoney(rate.amount_minor, settings.currency)} / {rate.basis.replace("ly", "").replace("dai", "day")}</span>}
                   <Pill tone={m.status === "active" ? "good" : STATUS_TONE[m.status] ?? "quiet"}>{statusLabel(m.status)}</Pill>
@@ -54,6 +57,8 @@ export default async function PeopleSettingsPage() {
                   <div><label className="label">Manager</label><select name="manager" className="field" defaultValue={m.manager_id ?? ""}><option value="">None</option>{(members ?? []).filter((x) => x.id !== m.id).map((x) => <option key={x.id} value={x.id}>{x.display_name}</option>)}</select></div>
                   <div><label className="label">Type</label><select name="employment_type" className="field" defaultValue={m.employment_type}><option value="regular">Regular</option><option value="provisional">Provisional</option><option value="contract">Contract</option></select></div>
                   <div><label className="label">Status</label><select name="status" className="field" defaultValue={m.status}><option value="active">Active</option><option value="inactive">Inactive</option>{m.status === "invited" && <option value="invited">Invited</option>}</select></div>
+                  <div><label className="label">Hired on</label><input name="hired_on" type="date" className="field" defaultValue={m.hired_on ?? ""} /></div>
+                  <p className="self-end text-xs text-muted">Provisional staff become regular {settings.probation_months} months after this date.</p>
                   <button className="btn-primary sm:col-span-2 sm:justify-self-start">Save</button>
                 </Form>
                 {can("payroll.run") && (

@@ -21,7 +21,20 @@ export default function OnboardingPage() {
             { name: "currency", label: "Currency", defaultValue: "PHP" },
           ]}
           submit="Create business"
-        />
+        >
+          <fieldset>
+            <legend className="label">Start with</legend>
+            <label className="mb-2 flex gap-2 rounded-xl border border-line p-3 text-sm">
+              <input type="radio" name="template" value="small" defaultChecked className="mt-1" />
+              <span><span className="font-medium">A small team</span><span className="block text-muted">Owner, managers and employees. Good for a shop, café or office.</span></span>
+            </label>
+            <label className="flex gap-2 rounded-xl border border-line p-3 text-sm">
+              <input type="radio" name="template" value="field" className="mt-1" />
+              <span><span className="font-medium">Field teams</span><span className="block text-muted">General manager, HR, operations, team leaders who lead areas, and staff. Sales and incentives switched on.</span></span>
+            </label>
+            <p className="mt-1 text-xs text-muted">You can rename roles, change permissions and switch features on or off later.</p>
+          </fieldset>
+        </ActionForm>
       </div>
     </main>
   );

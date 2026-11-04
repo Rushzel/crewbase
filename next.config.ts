@@ -14,6 +14,10 @@ const nextConfig: NextConfig = {
       "@vladmandic/human": "./node_modules/@vladmandic/human/dist/human.esm.js",
     },
   },
+  // Leave attachments (up to 5 MB) are uploaded through a server action; the default limit is 1 MB.
+  experimental: {
+    serverActions: { bodySizeLimit: "6mb" },
+  },
 };
 
 export default nextConfig;

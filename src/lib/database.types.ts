@@ -197,6 +197,44 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"customer_applications": {
+                  Row: {
+                    "address": string | null,"created_at": string,"customer_email": string,"customer_name": string,"customer_phone": string | null,"decided_at": string | null,"decided_by": string | null,"decision_note": string | null,"id": string,"incentive_minor": number,"membership_id": string,"notes": string | null,"org_id": string,"price_minor": number,"product_id": string,"resend_count": number,"site_id": string | null,"status": Database["public"]['Enums']["application_status"],"token_expires_at": string | null,"token_hash": string | null,"verification_sent_at": string | null,"verified_at": string | null
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "address"?: string | null,"created_at"?: string,"customer_email": string,"customer_name": string,"customer_phone"?: string | null,"decided_at"?: string | null,"decided_by"?: string | null,"decision_note"?: string | null,"id"?: string,"incentive_minor"?: number,"membership_id": string,"notes"?: string | null,"org_id": string,"price_minor": number,"product_id": string,"resend_count"?: number,"site_id"?: string | null,"status": Database["public"]['Enums']["application_status"],"token_expires_at"?: string | null,"token_hash"?: string | null,"verification_sent_at"?: string | null,"verified_at"?: string | null
+                  }
+                  Update: {
+                    "address"?: string | null,"created_at"?: string,"customer_email"?: string,"customer_name"?: string,"customer_phone"?: string | null,"decided_at"?: string | null,"decided_by"?: string | null,"decision_note"?: string | null,"id"?: string,"incentive_minor"?: number,"membership_id"?: string,"notes"?: string | null,"org_id"?: string,"price_minor"?: number,"product_id"?: string,"resend_count"?: number,"site_id"?: string | null,"status"?: Database["public"]['Enums']["application_status"],"token_expires_at"?: string | null,"token_hash"?: string | null,"verification_sent_at"?: string | null,"verified_at"?: string | null
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "customer_applications_decided_by_org_id_fkey"
+      columns: ["decided_by","org_id"]
+isOneToOne: false
+      referencedRelation: "memberships"
+      referencedColumns: ["id","org_id"]
+    },{
+      foreignKeyName: "customer_applications_membership_id_org_id_fkey"
+      columns: ["membership_id","org_id"]
+isOneToOne: false
+      referencedRelation: "memberships"
+      referencedColumns: ["id","org_id"]
+    },{
+      foreignKeyName: "customer_applications_product_id_org_id_fkey"
+      columns: ["product_id","org_id"]
+isOneToOne: false
+      referencedRelation: "products"
+      referencedColumns: ["id","org_id"]
+    },{
+      foreignKeyName: "customer_applications_site_id_org_id_fkey"
+      columns: ["site_id","org_id"]
+isOneToOne: false
+      referencedRelation: "sites"
+      referencedColumns: ["id","org_id"]
+    }
+                  ]
                 },"deduction_rules": {
                   Row: {
                     "active": boolean,"brackets": Json | null,"id": string,"is_sample": boolean,"kind": Database["public"]['Enums']["deduction_kind"],"name": string,"org_id": string,"value": number | null
@@ -303,30 +341,82 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
-                },"member_sites": {
+                },"leave_requests": {
                   Row: {
-                    "membership_id": string,"site_id": string
+                    "attachment_path": string | null,"created_at": string,"days": number,"ends_on": string,"id": string,"leave_type_id": string,"membership_id": string,"org_id": string,"reason": string | null,"review_note": string | null,"reviewed_at": string | null,"reviewed_by": string | null,"starts_on": string,"status": Database["public"]['Enums']["leave_status"]
                   }
                   ComputedFields: never
                   Insert: {
-                    "membership_id": string,"site_id": string
+                    "attachment_path"?: string | null,"created_at"?: string,"days": number,"ends_on": string,"id"?: string,"leave_type_id": string,"membership_id": string,"org_id": string,"reason"?: string | null,"review_note"?: string | null,"reviewed_at"?: string | null,"reviewed_by"?: string | null,"starts_on": string,"status"?: Database["public"]['Enums']["leave_status"]
                   }
                   Update: {
-                    "membership_id"?: string,"site_id"?: string
+                    "attachment_path"?: string | null,"created_at"?: string,"days"?: number,"ends_on"?: string,"id"?: string,"leave_type_id"?: string,"membership_id"?: string,"org_id"?: string,"reason"?: string | null,"review_note"?: string | null,"reviewed_at"?: string | null,"reviewed_by"?: string | null,"starts_on"?: string,"status"?: Database["public"]['Enums']["leave_status"]
                   }
                   Relationships: [
                     {
-      foreignKeyName: "member_sites_membership_id_fkey"
-      columns: ["membership_id"]
+      foreignKeyName: "leave_requests_leave_type_id_org_id_fkey"
+      columns: ["leave_type_id","org_id"]
+isOneToOne: false
+      referencedRelation: "leave_types"
+      referencedColumns: ["id","org_id"]
+    },{
+      foreignKeyName: "leave_requests_membership_id_org_id_fkey"
+      columns: ["membership_id","org_id"]
 isOneToOne: false
       referencedRelation: "memberships"
-      referencedColumns: ["id"]
+      referencedColumns: ["id","org_id"]
     },{
-      foreignKeyName: "member_sites_site_id_fkey"
-      columns: ["site_id"]
+      foreignKeyName: "leave_requests_reviewed_by_org_id_fkey"
+      columns: ["reviewed_by","org_id"]
+isOneToOne: false
+      referencedRelation: "memberships"
+      referencedColumns: ["id","org_id"]
+    }
+                  ]
+                },"leave_types": {
+                  Row: {
+                    "active": boolean,"id": string,"name": string,"needs_attachment": boolean,"org_id": string,"paid": boolean,"yearly_days": number | null
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "active"?: boolean,"id"?: string,"name": string,"needs_attachment"?: boolean,"org_id": string,"paid"?: boolean,"yearly_days"?: number | null
+                  }
+                  Update: {
+                    "active"?: boolean,"id"?: string,"name"?: string,"needs_attachment"?: boolean,"org_id"?: string,"paid"?: boolean,"yearly_days"?: number | null
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "leave_types_org_id_fkey"
+      columns: ["org_id"]
+isOneToOne: false
+      referencedRelation: "organizations"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"member_sites": {
+                  Row: {
+                    "is_leader": boolean,"membership_id": string,"org_id": string,"site_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "is_leader"?: boolean,"membership_id": string,"org_id": string,"site_id": string
+                  }
+                  Update: {
+                    "is_leader"?: boolean,"membership_id"?: string,"org_id"?: string,"site_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "member_sites_membership_id_org_id_fkey"
+      columns: ["membership_id","org_id"]
+isOneToOne: false
+      referencedRelation: "memberships"
+      referencedColumns: ["id","org_id"]
+    },{
+      foreignKeyName: "member_sites_site_id_org_id_fkey"
+      columns: ["site_id","org_id"]
 isOneToOne: false
       referencedRelation: "sites"
-      referencedColumns: ["id"]
+      referencedColumns: ["id","org_id"]
     }
                   ]
                 },"memberships": {
@@ -383,14 +473,14 @@ isOneToOne: false
                   ]
                 },"org_settings": {
                   Row: {
-                    "currency": string,"default_start_time": string,"face_fail_policy": Database["public"]['Enums']["fail_policy"],"face_threshold": number,"grace_minutes": number,"keep_audit_frames": boolean,"liveness_required": boolean,"location_fail_policy": Database["public"]['Enums']["fail_policy"],"location_max_accuracy_m": number,"location_mode": Database["public"]['Enums']["location_mode"],"org_id": string,"overtime_multiplier": number,"pay_frequency": Database["public"]['Enums']["pay_frequency"],"regular_minutes_per_day": number,"timezone": string,"week_start": number
+                    "absent_after_minutes": number,"area_label": string,"area_label_plural": string,"currency": string,"default_start_time": string,"earliest_clock_in": string | null,"face_fail_policy": Database["public"]['Enums']["fail_policy"],"face_threshold": number,"follow_up_hours": number,"full_day_minutes": number,"grace_minutes": number,"half_day_minutes": number,"keep_audit_frames": boolean,"liveness_required": boolean,"location_fail_policy": Database["public"]['Enums']["fail_policy"],"location_max_accuracy_m": number,"location_mode": Database["public"]['Enums']["location_mode"],"org_id": string,"overtime_multiplier": number,"pay_frequency": Database["public"]['Enums']["pay_frequency"],"probation_months": number,"regular_minutes_per_day": number,"timezone": string,"week_start": number,"work_days": (number)[]
                   }
                   ComputedFields: never
                   Insert: {
-                    "currency"?: string,"default_start_time"?: string,"face_fail_policy"?: Database["public"]['Enums']["fail_policy"],"face_threshold"?: number,"grace_minutes"?: number,"keep_audit_frames"?: boolean,"liveness_required"?: boolean,"location_fail_policy"?: Database["public"]['Enums']["fail_policy"],"location_max_accuracy_m"?: number,"location_mode"?: Database["public"]['Enums']["location_mode"],"org_id": string,"overtime_multiplier"?: number,"pay_frequency"?: Database["public"]['Enums']["pay_frequency"],"regular_minutes_per_day"?: number,"timezone"?: string,"week_start"?: number
+                    "absent_after_minutes"?: number,"area_label"?: string,"area_label_plural"?: string,"currency"?: string,"default_start_time"?: string,"earliest_clock_in"?: string | null,"face_fail_policy"?: Database["public"]['Enums']["fail_policy"],"face_threshold"?: number,"follow_up_hours"?: number,"full_day_minutes"?: number,"grace_minutes"?: number,"half_day_minutes"?: number,"keep_audit_frames"?: boolean,"liveness_required"?: boolean,"location_fail_policy"?: Database["public"]['Enums']["fail_policy"],"location_max_accuracy_m"?: number,"location_mode"?: Database["public"]['Enums']["location_mode"],"org_id": string,"overtime_multiplier"?: number,"pay_frequency"?: Database["public"]['Enums']["pay_frequency"],"probation_months"?: number,"regular_minutes_per_day"?: number,"timezone"?: string,"week_start"?: number,"work_days"?: (number)[]
                   }
                   Update: {
-                    "currency"?: string,"default_start_time"?: string,"face_fail_policy"?: Database["public"]['Enums']["fail_policy"],"face_threshold"?: number,"grace_minutes"?: number,"keep_audit_frames"?: boolean,"liveness_required"?: boolean,"location_fail_policy"?: Database["public"]['Enums']["fail_policy"],"location_max_accuracy_m"?: number,"location_mode"?: Database["public"]['Enums']["location_mode"],"org_id"?: string,"overtime_multiplier"?: number,"pay_frequency"?: Database["public"]['Enums']["pay_frequency"],"regular_minutes_per_day"?: number,"timezone"?: string,"week_start"?: number
+                    "absent_after_minutes"?: number,"area_label"?: string,"area_label_plural"?: string,"currency"?: string,"default_start_time"?: string,"earliest_clock_in"?: string | null,"face_fail_policy"?: Database["public"]['Enums']["fail_policy"],"face_threshold"?: number,"follow_up_hours"?: number,"full_day_minutes"?: number,"grace_minutes"?: number,"half_day_minutes"?: number,"keep_audit_frames"?: boolean,"liveness_required"?: boolean,"location_fail_policy"?: Database["public"]['Enums']["fail_policy"],"location_max_accuracy_m"?: number,"location_mode"?: Database["public"]['Enums']["location_mode"],"org_id"?: string,"overtime_multiplier"?: number,"pay_frequency"?: Database["public"]['Enums']["pay_frequency"],"probation_months"?: number,"regular_minutes_per_day"?: number,"timezone"?: string,"week_start"?: number,"work_days"?: (number)[]
                   }
                   Relationships: [
                     {
@@ -556,6 +646,26 @@ isOneToOne: false
       columns: ["period_id"]
 isOneToOne: false
       referencedRelation: "pay_periods"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"products": {
+                  Row: {
+                    "active": boolean,"auto_approve": boolean,"description": string | null,"id": string,"incentive_minor": number,"name": string,"needs_verification": boolean,"org_id": string,"price_minor": number,"sort": number
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "active"?: boolean,"auto_approve"?: boolean,"description"?: string | null,"id"?: string,"incentive_minor"?: number,"name": string,"needs_verification"?: boolean,"org_id": string,"price_minor": number,"sort"?: number
+                  }
+                  Update: {
+                    "active"?: boolean,"auto_approve"?: boolean,"description"?: string | null,"id"?: string,"incentive_minor"?: number,"name"?: string,"needs_verification"?: boolean,"org_id"?: string,"price_minor"?: number,"sort"?: number
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "products_org_id_fkey"
+      columns: ["org_id"]
+isOneToOne: false
+      referencedRelation: "organizations"
       referencedColumns: ["id"]
     }
                   ]
@@ -741,6 +851,14 @@ isOneToOne: false
 "approve_timesheet":
 { Args: { "p_member": string,"p_note"?: string,"p_period": string }; Returns: undefined
                            },
+"attendance_days":
+{ Args: { "p_from": string,"p_org": string,"p_to": string }; Returns: {
+              "day": string,"display_name": string,"expected": boolean,"first_in": string,"last_out": string,"late_minutes": number,"leave_type": string,"membership_id": string,"status": string,"worked_minutes": number,"working": boolean
+            }[]
+                           },
+"cancel_application":
+{ Args: { "p_application": string,"p_reason": string }; Returns: undefined
+                           },
 "clock_in":
 { Args: { "p_accuracy_m"?: number,"p_age_s"?: number,"p_challenge"?: string,"p_embedding"?: (number)[],"p_lat"?: number,"p_liveness"?: Json,"p_lng"?: number,"p_site": string,"p_user_agent"?: string }; Returns: Json
                            },
@@ -748,7 +866,7 @@ isOneToOne: false
 { Args: { "p_accuracy_m"?: number,"p_age_s"?: number,"p_challenge"?: string,"p_embedding"?: (number)[],"p_lat"?: number,"p_liveness"?: Json,"p_lng"?: number,"p_org": string,"p_user_agent"?: string }; Returns: Json
                            },
 "create_organization":
-{ Args: { "p_currency"?: string,"p_display_name": string,"p_name": string,"p_slug": string,"p_timezone"?: string }; Returns: string
+{ Args: { "p_currency"?: string,"p_display_name": string,"p_name": string,"p_slug": string,"p_template"?: string,"p_timezone"?: string }; Returns: string
                            },
 "create_pay_period":
 { Args: { "p_ends": string,"p_org": string,"p_starts": string }; Returns: string
@@ -757,6 +875,9 @@ isOneToOne: false
 { Args: { "p_from": string,"p_org": string,"p_to": string }; Returns: {
               "day": string,"late_people": number,"people_scheduled": number,"people_worked": number,"worked_minutes": number
             }[]
+                           },
+"decide_application":
+{ Args: { "p_application": string,"p_approve": boolean,"p_note"?: string }; Returns: undefined
                            },
 "delete_shift":
 { Args: { "p_shift": string }; Returns: undefined
@@ -784,12 +905,25 @@ isOneToOne: false
 "issue_clock_challenge":
 { Args: { "p_org": string }; Returns: Json
                            },
+"leave_balances":
+{ Args: { "p_member": string,"p_year"?: number }; Returns: {
+              "leave_type_id": string,"name": string,"paid": boolean,"remaining": number,"used": number,"yearly_days": number
+            }[]
+                           },
 "lock_period":
 { Args: { "p_override_reason"?: string,"p_period": string }; Returns: undefined
+                           },
+"log_application":
+{ Args: { "p_address"?: string,"p_customer_email": string,"p_customer_name": string,"p_customer_phone"?: string,"p_notes"?: string,"p_org": string,"p_product": string }; Returns: Json
                            },
 "member_metrics":
 { Args: { "p_from": string,"p_org": string,"p_to": string }; Returns: {
               "attendance_rate": number,"correction_rate": number,"days_absent": number,"days_scheduled": number,"days_worked": number,"display_name": string,"employment_type": Database["public"]['Enums']["employment_type"],"enough_data": boolean,"hours_vs_schedule": number,"manager_id": string,"median_late_minutes": number,"membership_id": string,"missing_out_rate": number,"on_time_rate": number,"overtime_share": number,"punches": number,"scheduled_minutes": number,"verification_failure_rate": number,"worked_minutes": number
+            }[]
+                           },
+"my_team":
+{ Args: { "p_org": string }; Returns: {
+              "display_name": string,"membership_id": string,"role_name": string
             }[]
                            },
 "period_without_payslip":
@@ -803,8 +937,17 @@ isOneToOne: false
 "reject_request":
 { Args: { "p_note": string,"p_request": string }; Returns: undefined
                            },
+"request_leave":
+{ Args: { "p_attachment"?: string,"p_from": string,"p_org": string,"p_reason"?: string,"p_to": string,"p_type": string }; Returns: string
+                           },
+"resend_verification":
+{ Args: { "p_application": string }; Returns: string
+                           },
+"review_leave":
+{ Args: { "p_approve": boolean,"p_note"?: string,"p_request": string }; Returns: undefined
+                           },
 "save_member":
-{ Args: { "p_display_name": string,"p_employee_code"?: string,"p_employment_type": Database["public"]['Enums']["employment_type"],"p_manager": string,"p_member": string,"p_role": string,"p_status": Database["public"]['Enums']["membership_status"] }; Returns: undefined
+{ Args: { "p_display_name": string,"p_employee_code"?: string,"p_employment_type": Database["public"]['Enums']["employment_type"],"p_hired_on"?: string,"p_manager": string,"p_member": string,"p_role": string,"p_status": Database["public"]['Enums']["membership_status"] }; Returns: undefined
                            },
 "save_shift":
 { Args: { "p_ends": string,"p_member": string,"p_shift"?: string,"p_site": string,"p_starts": string }; Returns: string
@@ -823,18 +966,32 @@ isOneToOne: false
 "submit_request":
 { Args: { "p_entry": string,"p_evidence_link"?: string,"p_kind": Database["public"]['Enums']["request_kind"],"p_org"?: string,"p_reason": string,"p_requested_break"?: number,"p_requested_in"?: string,"p_requested_out"?: string,"p_site"?: string }; Returns: string
                            },
+"time_in_points":
+{ Args: { "p_day": string,"p_org": string }; Returns: {
+              "accepted": boolean,"flagged": boolean,"lat": number,"lng": number,"membership_id": string,"reason": string,"server_time": string
+            }[]
+                           },
 "unlock_period":
 { Args: { "p_period": string,"p_reason": string }; Returns: undefined
                            },
+"update_application":
+{ Args: { "p_address"?: string,"p_application": string,"p_customer_email": string,"p_customer_name": string,"p_customer_phone"?: string,"p_notes"?: string }; Returns: string
+                           },
+"verify_application":
+{ Args: { "p_token": string }; Returns: Json
+                           },
 "void_payslip":
 { Args: { "p_payslip": string,"p_reason": string }; Returns: undefined
+                           },
+"withdraw_leave":
+{ Args: { "p_request": string }; Returns: undefined
                            },
 "withdraw_request":
 { Args: { "p_request": string }; Returns: undefined
                            }
           }
           Enums: {
-            "app_permission": "time.clock"|"time.edit"|"requests.review"|"schedule.manage"|"payroll.run"|"people.manage"|"sites.manage"|"settings.manage"|"analytics.view"|"face.enroll_others","deduction_kind": "fixed"|"percent"|"bracket","employment_type": "regular"|"provisional"|"contract","entry_source": "app"|"manual","entry_status": "working"|"on_break"|"closed"|"missing_out","fail_policy": "block"|"flag","feature_key": "time_tracking"|"face_verification"|"geofence"|"breaks"|"corrections"|"scheduling"|"payroll"|"analytics"|"output_tracking","location_mode": "strict"|"balanced","membership_status": "invited"|"active"|"inactive","pay_basis": "hourly"|"daily"|"monthly","pay_frequency": "weekly"|"biweekly"|"semimonthly"|"monthly","payslip_status": "draft"|"final"|"void","period_status": "open"|"in_review"|"locked"|"finalized","punch_kind": "in"|"out"|"break_start"|"break_end","request_kind": "change_times"|"missing_time_out"|"missing_entry"|"delete_entry","request_status": "pending"|"approved"|"rejected"|"withdrawn","role_scope": "own"|"team"|"all"
+            "app_permission": "time.clock"|"time.edit"|"requests.review"|"schedule.manage"|"payroll.run"|"people.manage"|"sites.manage"|"settings.manage"|"analytics.view"|"face.enroll_others"|"leave.review"|"sales.log"|"sales.review"|"products.manage"|"audit.view","application_status": "awaiting_verification"|"follow_up"|"for_approval"|"approved"|"rejected"|"cancelled","deduction_kind": "fixed"|"percent"|"bracket","employment_type": "regular"|"provisional"|"contract","entry_source": "app"|"manual","entry_status": "working"|"on_break"|"closed"|"missing_out","fail_policy": "block"|"flag","feature_key": "time_tracking"|"face_verification"|"geofence"|"breaks"|"corrections"|"scheduling"|"payroll"|"analytics"|"output_tracking"|"leave"|"sales","leave_status": "pending"|"approved"|"rejected"|"withdrawn","location_mode": "strict"|"balanced","membership_status": "invited"|"active"|"inactive","pay_basis": "hourly"|"daily"|"monthly","pay_frequency": "weekly"|"biweekly"|"semimonthly"|"monthly","payslip_status": "draft"|"final"|"void","period_status": "open"|"in_review"|"locked"|"finalized","punch_kind": "in"|"out"|"break_start"|"break_end","request_kind": "change_times"|"missing_time_out"|"missing_entry"|"delete_entry","request_status": "pending"|"approved"|"rejected"|"withdrawn","role_scope": "own"|"team"|"all"
           }
           CompositeTypes: {
             [_ in never]: never
@@ -954,7 +1111,7 @@ export const Constants = {
           }
         },"public": {
           Enums: {
-            "app_permission": ["time.clock", "time.edit", "requests.review", "schedule.manage", "payroll.run", "people.manage", "sites.manage", "settings.manage", "analytics.view", "face.enroll_others"],"deduction_kind": ["fixed", "percent", "bracket"],"employment_type": ["regular", "provisional", "contract"],"entry_source": ["app", "manual"],"entry_status": ["working", "on_break", "closed", "missing_out"],"fail_policy": ["block", "flag"],"feature_key": ["time_tracking", "face_verification", "geofence", "breaks", "corrections", "scheduling", "payroll", "analytics", "output_tracking"],"location_mode": ["strict", "balanced"],"membership_status": ["invited", "active", "inactive"],"pay_basis": ["hourly", "daily", "monthly"],"pay_frequency": ["weekly", "biweekly", "semimonthly", "monthly"],"payslip_status": ["draft", "final", "void"],"period_status": ["open", "in_review", "locked", "finalized"],"punch_kind": ["in", "out", "break_start", "break_end"],"request_kind": ["change_times", "missing_time_out", "missing_entry", "delete_entry"],"request_status": ["pending", "approved", "rejected", "withdrawn"],"role_scope": ["own", "team", "all"]
+            "app_permission": ["time.clock", "time.edit", "requests.review", "schedule.manage", "payroll.run", "people.manage", "sites.manage", "settings.manage", "analytics.view", "face.enroll_others", "leave.review", "sales.log", "sales.review", "products.manage", "audit.view"],"application_status": ["awaiting_verification", "follow_up", "for_approval", "approved", "rejected", "cancelled"],"deduction_kind": ["fixed", "percent", "bracket"],"employment_type": ["regular", "provisional", "contract"],"entry_source": ["app", "manual"],"entry_status": ["working", "on_break", "closed", "missing_out"],"fail_policy": ["block", "flag"],"feature_key": ["time_tracking", "face_verification", "geofence", "breaks", "corrections", "scheduling", "payroll", "analytics", "output_tracking", "leave", "sales"],"leave_status": ["pending", "approved", "rejected", "withdrawn"],"location_mode": ["strict", "balanced"],"membership_status": ["invited", "active", "inactive"],"pay_basis": ["hourly", "daily", "monthly"],"pay_frequency": ["weekly", "biweekly", "semimonthly", "monthly"],"payslip_status": ["draft", "final", "void"],"period_status": ["open", "in_review", "locked", "finalized"],"punch_kind": ["in", "out", "break_start", "break_end"],"request_kind": ["change_times", "missing_time_out", "missing_entry", "delete_entry"],"request_status": ["pending", "approved", "rejected", "withdrawn"],"role_scope": ["own", "team", "all"]
           }
         }
 } as const

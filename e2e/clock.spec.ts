@@ -5,7 +5,8 @@ test.use({ permissions: ["geolocation"], geolocation: { latitude: 14.5547, longi
 
 test.beforeEach(async ({ page }) => {
   await page.goto("/demo/harbor/employee");
-  await expect(page).toHaveURL(/\/today/);
+  await expect(page).toHaveURL(/\/home/);
+  await page.goto("/today");
   // The seed may have this person already working today; start from timed out.
   const out = page.getByRole("button", { name: "Time out" });
   if (await out.isVisible()) {

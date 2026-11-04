@@ -1,22 +1,21 @@
 import { expect, test } from "@playwright/test";
+import { DEMOS } from "../src/lib/demo";
 
-// Criterion 44: each demo account signs in with one click and lands on the right screen.
-for (const business of ["harbor", "northgate"] as const) {
-  for (const role of ["owner", "manager", "employee"] as const) {
-    test(`demo sign-in: ${business} ${role}`, async ({ page }) => {
+// Who should see Payroll and Settings in the menu, by demo role.
+const PAYROLL = new Set(["owner", "general-manager", "hr"]);
+
+// Criterion 44: each demo account signs in with one click and lands on the home screen for its role.
+for (const demo of DEMOS) {
+  for (const role of demo.roles) {
+    test(`demo sign-in: ${demo.key} ${role.key}`, async ({ page }) => {
       await page.goto("/");
-      await page.locator(`a[href="/demo/${business}/${role}"]`).click();
-      await expect(page).toHaveURL(/\/today/);
-      await expect(page.getByText("You're using a demo account")).toBeVisible();
-      await expect(page.getByText(business === "harbor" ? "Harbor Lane Café" : "Northgate Logistics").first()).toBeVisible();
+      await page.locator(`a[href="/demo/${demo.key}/${role.key}"]`).click();
+      await expect(page).toHaveURL(/\/home/);
+      await expect(page.getByText("in a made-up business")).toBeVisible();
+      await expect(page.getByText(demo.name).first()).toBeVisible();
       const nav = page.locator("aside nav");
-      if (role === "owner") {
-        await expect(nav.getByRole("link", { name: "Payroll" })).toBeVisible();
-        await expect(nav.getByRole("link", { name: "Settings" })).toBeVisible();
-      } else {
-        await expect(nav.getByRole("link", { name: "Payroll" })).toHaveCount(0);
-        await expect(nav.getByRole("link", { name: "Settings" })).toHaveCount(0);
-      }
+      await expect(nav.getByRole("link", { name: "Payroll" })).toHaveCount(PAYROLL.has(role.key) ? 1 : 0);
+      await expect(nav.getByRole("link", { name: "Settings" })).toHaveCount(role.key === "owner" ? 1 : 0);
     });
   }
 }

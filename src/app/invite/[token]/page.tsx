@@ -12,7 +12,7 @@ async function accept(token: string) {
   const { data, error } = await supabase.rpc("accept_invitation", { p_token: token });
   if (error) redirect(`/invite/${token}?error=${encodeURIComponent(error.message)}`);
   (await cookies()).set(ORG_COOKIE, data, { path: "/", sameSite: "lax", httpOnly: true });
-  redirect("/today");
+  redirect("/home");
 }
 
 export default async function InvitePage({ params, searchParams }: PageProps<"/invite/[token]">) {

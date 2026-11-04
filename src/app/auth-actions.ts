@@ -17,7 +17,7 @@ export async function signIn(_: FormState, form: FormData): Promise<FormState> {
   const { error } = await supabase.auth.signInWithPassword(parsed.data);
   if (error) return { error: "That email and password don't match." };
   const next = String(form.get("next") ?? "");
-  redirect(next.startsWith("/") && !next.startsWith("//") ? next : "/today");
+  redirect(next.startsWith("/") && !next.startsWith("//") ? next : "/home");
 }
 
 export async function signUp(_: FormState, form: FormData): Promise<FormState> {
@@ -36,6 +36,7 @@ const business = z.object({
   displayName: z.string().trim().min(2, "Enter your name").max(80),
   timezone: z.string().min(3),
   currency: z.string().length(3),
+  template: z.enum(["small", "field"]).default("small"),
 });
 
 export async function createBusiness(_: FormState, form: FormData): Promise<FormState> {
@@ -48,15 +49,16 @@ export async function createBusiness(_: FormState, form: FormData): Promise<Form
     p_display_name: parsed.data.displayName,
     p_timezone: parsed.data.timezone,
     p_currency: parsed.data.currency,
+    p_template: parsed.data.template,
   });
   if (error) return { error: error.code === "23505" ? "That web address is taken." : error.message };
   (await cookies()).set(ORG_COOKIE, data, { path: "/", sameSite: "lax", httpOnly: true });
-  redirect("/settings");
+  redirect("/home");
 }
 
 export async function switchBusiness(orgId: string) {
   (await cookies()).set(ORG_COOKIE, orgId, { path: "/", sameSite: "lax", httpOnly: true });
-  redirect("/today");
+  redirect("/home");
 }
 
 export async function signOut() {

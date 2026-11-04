@@ -1,7 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-const PUBLIC_PATHS = ["/sign-in", "/sign-up", "/demo", "/invite"];
+const PUBLIC_PATHS = ["/sign-in", "/sign-up", "/demo", "/invite", "/verify"];
 
 // Refreshes the Supabase session on every request and sends signed-out visitors to sign in.
 // This only decides where people land; the database still enforces every permission.

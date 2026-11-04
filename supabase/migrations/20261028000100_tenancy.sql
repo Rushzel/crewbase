@@ -403,7 +403,8 @@ grant execute on function public.create_organization to authenticated;
 -- Changing a member's role, manager, type or status (people.manage only).
 create function public.save_member(
   p_member uuid, p_display_name text, p_role uuid, p_manager uuid,
-  p_employment_type public.employment_type, p_status public.membership_status, p_employee_code text default null
+  p_employment_type public.employment_type, p_status public.membership_status, p_employee_code text default null,
+  p_hired_on date default null
 ) returns void
 language plpgsql security definer set search_path = '' as $$
 declare
@@ -414,7 +415,8 @@ begin
   perform private.require_permission(v_org, 'people.manage');
   update public.memberships set
     display_name = trim(p_display_name), role_id = p_role, manager_id = p_manager,
-    employment_type = p_employment_type, status = p_status, employee_code = nullif(trim(p_employee_code), '')
+    employment_type = p_employment_type, status = p_status, employee_code = nullif(trim(p_employee_code), ''),
+    hired_on = coalesce(p_hired_on, hired_on)
   where id = p_member;
 end $$;
 

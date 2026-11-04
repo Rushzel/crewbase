@@ -16,7 +16,7 @@ export default async function SignInPage({ searchParams }: PageProps<"/sign-in">
         {typeof error === "string" && <p className="mb-4 text-sm text-warn">{error}</p>}
         <ActionForm
           action={signIn}
-          hidden={{ next: typeof next === "string" ? next : "/today" }}
+          hidden={{ next: typeof next === "string" ? next : "/home" }}
           fields={[
             { name: "email", label: "Email", type: "email" },
             { name: "password", label: "Password", type: "password" },

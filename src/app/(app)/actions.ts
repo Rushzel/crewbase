@@ -163,7 +163,17 @@ export async function saveSettings(_: ActionResult, form: FormData): Promise<Act
     .update(
       {
         timezone: String(form.get("timezone")),
+        default_start_time: String(form.get("default_start_time")),
         grace_minutes: n("grace_minutes"),
+        absent_after_minutes: n("absent_after_minutes"),
+        full_day_minutes: Math.round(n("full_day_hours") * 60),
+        half_day_minutes: Math.round(n("half_day_hours") * 60),
+        earliest_clock_in: String(form.get("earliest_clock_in") ?? "") || null,
+        work_days: form.getAll("work_days").map(Number),
+        probation_months: n("probation_months"),
+        follow_up_hours: n("follow_up_hours"),
+        area_label: String(form.get("area_label") ?? "").trim() || "Area",
+        area_label_plural: String(form.get("area_label_plural") ?? "").trim() || "Areas",
         regular_minutes_per_day: n("regular_hours") * 60,
         overtime_multiplier: n("overtime_multiplier"),
         location_max_accuracy_m: n("location_max_accuracy_m"),

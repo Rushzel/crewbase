@@ -243,8 +243,9 @@ create function private.audit_row()
 returns trigger language plpgsql security definer set search_path = '' as $$
 declare
   v_org uuid;
-  v_old jsonb := case when tg_op in ('UPDATE', 'DELETE') then to_jsonb(old) end;
-  v_new jsonb := case when tg_op in ('INSERT', 'UPDATE') then to_jsonb(new) end;
+  -- Token hashes stay out of the log: only the table that checks them needs them.
+  v_old jsonb := case when tg_op in ('UPDATE', 'DELETE') then to_jsonb(old) - 'token_hash' end;
+  v_new jsonb := case when tg_op in ('INSERT', 'UPDATE') then to_jsonb(new) - 'token_hash' end;
 begin
   v_org := coalesce((v_new ->> 'org_id')::uuid, (v_old ->> 'org_id')::uuid, (v_new ->> 'id')::uuid);
   -- Rows removed because their whole business is being deleted need no audit entry.

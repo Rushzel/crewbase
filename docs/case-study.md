@@ -39,17 +39,29 @@ The pattern: rules lived where they could be skipped (the browser, a controller 
 - **Workforce analytics:** attendance, punctuality, hours against schedule, overtime, corrections and failed checks, compared with the team median, marked "not enough data" under 10 days, with flags that name their rule and a forecast that states its method and range.
 - **Configurable everything the first version hard-coded:** timezone, hours, grace minutes, overtime, accuracy limit, edge rule, flag-or-block policies, face threshold, and which features are on.
 
+## Second pass: bringing back what JedSkies did well
+
+The first rebuild kept JedSkies' ideas but lost much of its structure. It had no team leaders, areas, leave or sales, so it no longer felt like the system the team built. The second pass brought those back without copying the original screens or reports, and changed the data model where that made it faster or clearer:
+
+- **Visibility once per query.** Every policy used to ask "may I see this person?" row by row, walking the manager chain each time. Now the database works out the reader's visible people once per query and checks rows against that list. The 182 existing tests passed unchanged, which is how I know behaviour didn't move.
+- **Areas lead teams.** A team leader sees the people in the areas they lead, as in JedSkies, plus anyone who reports to them. Composite keys stop an area and a person from different businesses being linked, even by the database owner.
+- **Statuses are calculated, not stored.** JedSkies saved "present" or "late" when someone timed in, so a corrected time left the status wrong. Here the status comes from the time entries, shifts, approved leave and the business's own rules each time it's read.
+- **Leave and sales follow the same pattern as time.** Only database functions change them, decisions need a reason to reject, nobody approves their own, and locked pay periods stay locked. A customer confirms a sale with a one-use link. They must press a button, because email scanners open links automatically.
+- **Templates instead of one hierarchy.** JedSkies' five roles suit field teams but not a café, so both are starting templates that any business can rename.
+
+The tests caught three more bugs in this pass. One crashed sales for products without customer confirmation. In another, a demo leave date that fell on a Sunday was silently dropped, so the demo looked different depending on the day.
+
 ## Results
 
-- **182 database tests, 17 unit tests and 13 end-to-end tests pass.** They cover the acceptance criteria, with two exceptions: the brand colour check is tested as a unit rather than end to end, and the liveness spoof test (holding a photo to the camera) is manual and not run yet.
-- The tests found **nine real bugs**, most before any screen existed: for example, deleting an entry tried to update append-only evidence, four separate rules broke the nightly demo reset, and the reset failed only on some days because of an indexing mistake.
+- **299 database tests, 17 unit tests and 21 end-to-end tests pass.** They cover the acceptance criteria, with two exceptions: the brand colour check is tested as a unit rather than end to end, and the liveness spoof test (holding a photo to the camera) is manual and not run yet.
+- The tests found **twelve real bugs**, most before any screen existed: for example, deleting an entry tried to update append-only evidence, four separate rules broke the nightly demo reset, and the reset failed only on some days because of an indexing mistake.
 - The payroll tests use hand-calculated examples. One demo payslip shows "Tardiness, 67 min: ₱85.15", the same case as the original test report, which had it as ₱85.11 (67 ÷ 60 × ₱76.25 = ₱85.15).
 - A browser test sets the device clock to 2030 and times in: the record still shows today, from the server's clock.
 
 ## What I'd do next
 
 1. Run the manual liveness test with printed and on-screen made-up faces and publish the pass rate.
-2. Leave management and shifts that cross midnight.
+2. Reports and exports built on the daily status, leave and sales data, and shifts that cross midnight.
 3. Move face matching for high-risk businesses to a server-side model, or a certified liveness service if one is approved for the account.
 
 ## Credits

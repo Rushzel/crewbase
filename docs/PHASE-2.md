@@ -110,8 +110,8 @@ Numbered after Phase 1's 46.
 - [x] Sales, with tests.
 - [x] Payroll: leave and incentives, with tests.
 - [x] Probation job and audit coverage, with tests.
-- [ ] Demo data: a field business with areas, team leaders, leave and sales; accounts for every role.
-- [ ] Screens:
+- [x] Demo data: a field business with areas, team leaders, leave and sales; accounts for every role.
+- [x] Screens:
   - navigation by role;
   - areas and teams;
   - team today with its map;
@@ -120,4 +120,4 @@ Numbered after Phase 1's 46.
   - accounts;
   - audit trail;
   - role home screens.
-- [ ] End-to-end tests for the new screens; README, case study and PROGRESS updated.
+- [x] End-to-end tests for the new screens; README, case study and PROGRESS updated.

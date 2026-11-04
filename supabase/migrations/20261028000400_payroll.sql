@@ -347,6 +347,8 @@ declare
   v_has_shifts boolean;
   v_reg int := 0; v_ot int := 0; v_late int := 0; v_absent int := 0; v_paid_days int := 0;
   v_reg_pay numeric := 0; v_ot_pay numeric := 0; v_base_pay numeric := 0; v_absent_pay numeric := 0; v_late_pay numeric := 0;
+  v_leave_days int := 0; v_leave_pay numeric := 0; v_unpaid_days int := 0; v_unpaid_pay numeric := 0; v_sched_leave int := 0;
+  v_sales int := 0; v_incentive bigint := 0;
   v_rates int;
   v_pos int := 0;
   v_gross bigint := 0; v_ded bigint := 0; v_amount bigint;
@@ -377,10 +379,12 @@ begin
     sched as (
       select (sh.starts_at at time zone coalesce(private.site_timezone(sh.site_id), s.timezone))::date as day, min(sh.starts_at) as starts_at
       from public.shifts sh where sh.membership_id = p_member group by 1)
-    select dd.day, coalesce(w.minutes, 0) as minutes, w.first_in, sc.starts_at, rt.basis, rt.amount_minor
+    select dd.day, coalesce(w.minutes, 0) as minutes, w.first_in, sc.starts_at, rt.basis, rt.amount_minor, lv.paid as leave_paid
     from days dd
     left join worked w on w.day = dd.day
     left join sched sc on sc.day = dd.day
+    left join lateral (select lt.paid from public.leave_requests lr join public.leave_types lt on lt.id = lr.leave_type_id
+      where lr.membership_id = p_member and lr.status = 'approved' and dd.day between lr.starts_on and lr.ends_on limit 1) lv on true
     left join lateral (select r2.basis, r2.amount_minor from public.pay_rates r2
       where r2.membership_id = p_member and r2.effective_from <= dd.day order by r2.effective_from desc limit 1) rt on true
     order by dd.day
@@ -402,6 +406,26 @@ begin
 
     if d.basis = 'hourly' then
       v_reg_pay := v_reg_pay + v_day_reg / 60.0 * v_hourly;
+      -- Hourly staff: a paid leave day is paid as a regular day.
+      if d.minutes = 0 and d.leave_paid then
+        v_leave_days := v_leave_days + 1;
+        v_leave_pay := v_leave_pay + v_daily;
+      end if;
+    elsif d.minutes = 0 and d.leave_paid is not null then
+      -- Daily and monthly staff on approved leave: never an absence. On a scheduled day, paid leave
+      -- stays in basic pay and unpaid leave is deducted as leave; without schedules, paid leave is added.
+      if v_has_shifts and d.starts_at is not null then
+        v_sched_leave := v_sched_leave + 1;
+        v_paid_days := v_paid_days + 1;
+        v_base_pay := v_base_pay + v_daily;
+        if not d.leave_paid then
+          v_unpaid_days := v_unpaid_days + 1;
+          v_unpaid_pay := v_unpaid_pay + v_daily;
+        end if;
+      elsif d.leave_paid then
+        v_leave_days := v_leave_days + 1;
+        v_leave_pay := v_leave_pay + v_daily;
+      end if;
     else
       -- Daily and monthly staff: paid per scheduled day (or per worked day without schedules),
       -- with absences and tardiness deducted.
@@ -418,7 +442,13 @@ begin
     end if;
   end loop;
 
-  if v_reg + v_ot = 0 then return null; end if;
+  -- Approved sales count in the period they were approved in (the business's local date).
+  select count(*), coalesce(sum(a.incentive_minor), 0) into v_sales, v_incentive
+  from public.customer_applications a
+  where a.membership_id = p_member and a.status = 'approved' and a.incentive_minor > 0
+    and (a.decided_at at time zone s.timezone)::date between p.starts_on and p.ends_on;
+
+  if v_reg + v_ot = 0 and v_leave_days = 0 and v_sched_leave = 0 and v_incentive = 0 then return null; end if;
 
   insert into public.payslips (org_id, period_id, membership_id) values (p.org_id, p_period, p_member) returning id into v_id;
 
@@ -444,12 +474,30 @@ begin
     values (v_id, v_pos, 'earning', format('Overtime (x%s)', s.overtime_multiplier), round(v_ot / 60.0, 2), 'h', null, v_amount);
     v_gross := v_gross + v_amount;
   end if;
+  if v_leave_pay > 0 then
+    v_amount := private.round_minor(v_leave_pay); v_pos := v_pos + 1;
+    insert into public.payslip_lines (payslip_id, position, kind, label, quantity, unit, amount_minor)
+    values (v_id, v_pos, 'earning', 'Paid leave', v_leave_days, 'days', v_amount);
+    v_gross := v_gross + v_amount;
+  end if;
+  if v_incentive > 0 then
+    v_pos := v_pos + 1;
+    insert into public.payslip_lines (payslip_id, position, kind, label, quantity, unit, amount_minor)
+    values (v_id, v_pos, 'earning', 'Sales incentives', v_sales, 'sales', v_incentive);
+    v_gross := v_gross + v_incentive;
+  end if;
 
   -- Time-based deductions.
   if v_absent > 0 then
     v_amount := least(private.round_minor(v_absent_pay), v_gross); v_pos := v_pos + 1;
     insert into public.payslip_lines (payslip_id, position, kind, label, quantity, unit, amount_minor)
     values (v_id, v_pos, 'deduction', format('Absences, %s day%s', v_absent, case when v_absent = 1 then '' else 's' end), v_absent, 'days', v_amount);
+    v_ded := v_ded + v_amount;
+  end if;
+  if v_unpaid_days > 0 then
+    v_amount := least(private.round_minor(v_unpaid_pay), v_gross - v_ded); v_pos := v_pos + 1;
+    insert into public.payslip_lines (payslip_id, position, kind, label, quantity, unit, amount_minor)
+    values (v_id, v_pos, 'deduction', format('Unpaid leave, %s day%s', v_unpaid_days, case when v_unpaid_days = 1 then '' else 's' end), v_unpaid_days, 'days', v_amount);
     v_ded := v_ded + v_amount;
   end if;
   if v_late > 0 then

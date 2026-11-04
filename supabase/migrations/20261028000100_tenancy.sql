@@ -487,5 +487,6 @@ create policy "settings managers revoke permissions" on public.role_permissions
 create policy "members read the directory" on public.memberships
   for select to authenticated using (org_id in (select private.my_orgs()));
 
-create policy "settings managers read the audit log" on public.audit_log
-  for select to authenticated using (private.has_permission(org_id, 'settings.manage'));
+create policy "auditors and settings managers read the audit log" on public.audit_log
+  for select to authenticated
+  using (private.has_permission(org_id, 'audit.view') or private.has_permission(org_id, 'settings.manage'));

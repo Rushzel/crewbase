@@ -103,13 +103,13 @@ Numbered after Phase 1's 46.
 
 ## Tasks
 
-- [ ] Plan (this file).
-- [ ] Visibility rewrite, enums, settings, templates, area leaders; Phase 1 tests still pass.
-- [ ] Attendance rules and `attendance_days`, with tests.
-- [ ] Leave, with tests.
-- [ ] Sales, with tests.
-- [ ] Payroll: leave and incentives, with tests.
-- [ ] Probation job and audit coverage, with tests.
+- [x] Plan (this file).
+- [x] Visibility rewrite, enums, settings, templates, area leaders; Phase 1 tests still pass.
+- [x] Attendance rules and `attendance_days`, with tests.
+- [x] Leave, with tests.
+- [x] Sales, with tests.
+- [x] Payroll: leave and incentives, with tests.
+- [x] Probation job and audit coverage, with tests.
 - [ ] Demo data: a field business with areas, team leaders, leave and sales; accounts for every role.
 - [ ] Screens:
   - navigation by role;

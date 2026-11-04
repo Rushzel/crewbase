@@ -399,6 +399,7 @@ declare
   v_member uuid;
   v private.verdict;
   v_entry uuid;
+  v_opens time;
 begin
   if v_org is null then raise exception 'Site not found or inactive' using errcode = 'P0002'; end if;
   v_member := private.my_membership(v_org);
@@ -410,6 +411,11 @@ begin
   end if;
   if exists (select 1 from public.time_entries where membership_id = v_member and clock_out is null) then
     raise exception 'You already have an open entry. Time out first.' using errcode = 'P0001';
+  end if;
+  -- JedSkies refused time in before 5:00 AM; here each business sets its own earliest time, or none.
+  select earliest_clock_in into v_opens from public.org_settings where org_id = v_org;
+  if v_opens is not null and (now() at time zone private.site_timezone(p_site))::time < v_opens then
+    raise exception 'Time in opens at %', to_char(v_opens, 'FMHH12:MI AM') using errcode = 'P0001';
   end if;
 
   v := private.verify_punch(v_member, p_site, p_lat, p_lng, p_accuracy_m, p_age_s, p_challenge, p_embedding, p_liveness);

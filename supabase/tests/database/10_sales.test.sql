@@ -29,10 +29,10 @@ create function pg_temp.add(p_key text, p_user text, p_role text) returns void l
     from public.roles r where r.org_id = pg_temp.id('org') and r.name = p_role returning id)
   insert into ids select p_key, id from m
 $$;
-select pg_temp.add('ops', '02', 'Operations Manager');
-select pg_temp.add('ana', '03', 'Staff');
-select pg_temp.add('ben', '04', 'Staff');
-select pg_temp.add('hr', '05', 'HR Manager');
+select pg_temp.add('ops', '02', 'Finance');
+select pg_temp.add('ana', '03', 'Employee');
+select pg_temp.add('ben', '04', 'Employee');
+select pg_temp.add('hr', '05', 'Human Resources');
 with s as (insert into public.sites (org_id, name) values (pg_temp.id('org'), 'East') returning id)
 insert into ids select 'east', id from s;
 insert into public.member_sites (membership_id, site_id) values (pg_temp.id('ana'), pg_temp.id('east'));
@@ -53,7 +53,7 @@ reset role;
 select pg_temp.login('03');
 set local role authenticated;
 select throws_ok($$ insert into public.products (org_id, name, price_minor) values (pg_temp.id('org'), 'Mine', 1) $$,
-  '42501', null, 'staff cannot add products');
+  '42501', null, 'employees cannot add products');
 
 -- Criterion 54.
 insert into ids select 'a1', r ->> 'id' from (select public.log_application(pg_temp.id('org'), pg_temp.id('manual'), 'Carla Sample', 'Carla@Example.test', '0917 000 0000') r) x;
@@ -93,7 +93,7 @@ select throws_ok($$ select public.verify_application('not-a-token') $$, 'P0001',
 select pg_temp.login('03');
 set local role authenticated;
 insert into ids values ('a1_new', public.resend_verification(pg_temp.id('a1')));
-select throws_ok($$ select public.decide_application(pg_temp.id('a1'), true) $$, '42501', null, 'staff cannot approve sales');
+select throws_ok($$ select public.decide_application(pg_temp.id('a1'), true) $$, '42501', null, 'employees cannot approve sales');
 reset role;
 set local role anon;
 select is(public.verify_application(pg_temp.val('a1_new')) ->> 'status', 'for_approval', 'the customer confirms without signing in');
@@ -102,7 +102,7 @@ reset role;
 select pg_temp.login('02');
 set local role authenticated;
 select throws_ok($$ select public.decide_application(pg_temp.id('a1'), false) $$, '22023', null, 'a rejection needs a reason');
-select lives_ok($$ select public.decide_application(pg_temp.id('a1'), true, 'Documents checked') $$, 'the operations manager approves');
+select lives_ok($$ select public.decide_application(pg_temp.id('a1'), true, 'Documents checked') $$, 'finance approves');
 select throws_ok($$ select public.decide_application(pg_temp.id('a1'), false, 'Oops') $$, 'P0001', null, 'a decision is final');
 reset role;
 select is((select status::text || '/' || incentive_minor from public.customer_applications where id = pg_temp.id('a1')), 'approved/20000',
@@ -115,7 +115,7 @@ insert into ids select 'w1', r ->> 'id' from (select public.log_application(pg_t
 insert into ids select 'b1_token', r ->> 'token' from (select public.log_application(pg_temp.id('org'), pg_temp.id('manual'), 'Gina Sample', 'gina@example.test') r) x;
 select is((select status::text from public.customer_applications where id = pg_temp.id('w1')), 'for_approval',
   'a product without confirmation is ready for approval at once');
-select is((select count(*)::int from public.customer_applications), 2, 'staff see only their own applications');
+select is((select count(*)::int from public.customer_applications), 2, 'employees see only their own applications');
 reset role;
 update public.customer_applications set token_expires_at = now() - interval '1 minute' where customer_name = 'Gina Sample';
 select throws_ok($$ select public.verify_application(pg_temp.val('b1_token')) $$, 'P0001', null, 'an expired link fails');
@@ -143,7 +143,7 @@ reset role;
 
 -- Nobody approves their own sale, even with sales.review.
 insert into public.role_permissions (role_id, permission)
-select id, 'sales.log' from public.roles where org_id = pg_temp.id('org') and name = 'Operations Manager';
+select id, 'sales.log' from public.roles where org_id = pg_temp.id('org') and name = 'Finance';
 select pg_temp.login('02');
 set local role authenticated;
 insert into ids select 'own', r ->> 'id' from (select public.log_application(pg_temp.id('org'), pg_temp.id('walkin'), 'Hugo Sample', 'hugo@example.test') r) x;

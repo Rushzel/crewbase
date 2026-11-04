@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 
-// Phase 2: team leaders, areas, sales and leave in the demo business.
+// Phase 2: leaders, areas, sales and leave in the demo business.
 
 async function signIn(page: Page, role: string) {
   await page.goto(`/demo/${role}`);
@@ -14,30 +14,30 @@ function futureWorkday(): string {
   return d.toISOString().slice(0, 10);
 }
 
-// Criterion 47: a team leader sees their area's people and no one else's.
-test("a team leader's Team today shows only their area", async ({ page }) => {
-  await signIn(page, "team-leader");
+// Criterion 47: a leader sees their area's people and no one else's.
+test("a leader's Team today shows only their area", async ({ page }) => {
+  await signIn(page, "leader");
   await page.goto("/team");
   const table = page.locator("table");
   await expect(table.getByText("Abby Cruzado")).toBeVisible();
   await expect(table.getByText("Mark Ilagan")).toBeVisible();
-  // Agents in Marikina and Cainta, and the unassigned agents, are not in this leader's team.
+  // Employees in Marikina and Cainta, and the unassigned employees, are not in this leader's team.
   await expect(table.getByText("Ely Sarmiento")).toHaveCount(0);
   await expect(table.getByText("Dom Pangilinan")).toHaveCount(0);
 });
 
-test("operations sees every area and who has none", async ({ page }) => {
-  await signIn(page, "operations");
+test("human resources sees every area and who has none", async ({ page }) => {
+  await signIn(page, "hr");
   await page.goto("/areas");
   for (const area of ["Pasig East", "Marikina", "Cainta"]) await expect(page.getByRole("link", { name: area })).toBeVisible();
   await expect(page.getByText("Not in any area")).toBeVisible();
   await expect(page.getByText("Dom Pangilinan")).toBeVisible();
 });
 
-// Criteria 54, 55 and 57: log a sale, the customer confirms with the link, operations approves.
+// Criteria 54, 55 and 57: log a sale, the customer confirms with the link, finance approves.
 test("a sale goes from logged to confirmed to approved", async ({ page, browser }) => {
   const customer = `Test Customer ${Date.now()}`;
-  await signIn(page, "staff");
+  await signIn(page, "employee");
   await page.goto("/sales");
   const form = page.locator("section", { hasText: "Log a sale" });
   const kit = await form.locator("#product option", { hasText: "Starter package" }).getAttribute("value");
@@ -61,12 +61,12 @@ test("a sale goes from logged to confirmed to approved", async ({ page, browser 
   await expect(tab.getByRole("heading", { name: "This link doesn’t work" }).or(tab.getByRole("heading", { name: "This link doesn't work" }))).toBeVisible();
   await visitor.close();
 
-  // The agent can't approve their own sale; operations can.
+  // The employee can't approve their own sale; finance can.
   await page.goto("/sales?status=for_approval");
   await expect(page.getByRole("row", { name: new RegExp(customer) })).toBeVisible();
   await expect(page.getByRole("button", { name: "Approve" })).toHaveCount(0);
 
-  await signIn(page, "operations");
+  await signIn(page, "finance");
   await page.goto("/sales");
   await page.locator("li", { hasText: customer }).getByRole("button", { name: "Approve" }).click();
   await expect(page.locator("li", { hasText: customer })).toHaveCount(0);
@@ -74,11 +74,11 @@ test("a sale goes from logged to confirmed to approved", async ({ page, browser 
   await expect(page.getByRole("row", { name: new RegExp(customer) })).toBeVisible();
 });
 
-// Criteria 51 and 52: an agent requests leave and HR approves it.
+// Criteria 51 and 52: an employee requests leave and human resources approves it.
 test("leave goes from requested to approved", async ({ page }) => {
   const day = futureWorkday();
   const reason = `End-to-end test ${Date.now()}`;
-  await signIn(page, "staff");
+  await signIn(page, "employee");
   await page.goto("/leave");
   await page.getByLabel("Type").selectOption({ label: "Emergency" });
   await page.getByLabel("First day").fill(day);
@@ -121,8 +121,8 @@ test("an invitation is emailed", async ({ page, request }) => {
   expect((await found.json()).messages_count).toBe(1);
 });
 
-test("an agent can't open area or team screens", async ({ page }) => {
-  await signIn(page, "staff");
+test("an employee can't open area or team screens", async ({ page }) => {
+  await signIn(page, "employee");
   for (const path of ["/areas", "/team", "/audit", "/products"]) {
     await page.goto(path);
     await expect(page).toHaveURL(/\/home/);

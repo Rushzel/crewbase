@@ -78,7 +78,7 @@ select is((select count(*)::int from public.member_day_facts where membership_id
 reset role;
 
 -- Criterion 45: demo accounts can't change email or password.
-select throws_ok($$ update auth.users set email = 'stolen@example.test' where email = 'staff@demo.crewbase.example' $$,
+select throws_ok($$ update auth.users set email = 'stolen@example.test' where email = 'employee@demo.crewbase.example' $$,
   '42501', 'Demo accounts can''t change their email or password', 'a demo account''s email is protected');
 select throws_ok($$ update auth.users set encrypted_password = 'x' where email = 'owner@demo.crewbase.example' $$,
   '42501', null, 'a demo account''s password is protected');

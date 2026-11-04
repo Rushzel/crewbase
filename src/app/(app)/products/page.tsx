@@ -7,7 +7,7 @@ import { formatMoney } from "@/lib/format";
 
 export const metadata = { title: "Products" };
 
-// What agents can sell. Price and incentive are copied onto each application, so changes never rewrite past sales.
+// What your team can sell. Price and incentive are copied onto each application, so changes never rewrite past sales.
 export default async function ProductsPage() {
   const { supabase, org, settings, can, has } = await getContext();
   if (!has("sales") || !can("products.manage")) redirect("/home");

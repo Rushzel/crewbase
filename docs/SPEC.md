@@ -192,9 +192,9 @@ Design follows Kidd's preferences: clean, Apple-like, the business's one accent 
 
 ## 11. Demo and sample data
 
-- One made-up business, **Demo Company**: field agents in three polygon areas, team leaders, daily-rate pay (updated 4 Nov 2026; the first version had two businesses, and the café was removed at Kidd's request).
+- One made-up business, **Demo Company**: field employees in three polygon areas, leaders, daily-rate pay (updated 4 Nov 2026; the first version had two businesses, and the café was removed at Kidd's request).
 - 18 made-up members and 8 weeks of entries with realistic variety. Also leave, customer applications at every stage, flagged and blocked punches, pending corrections, and one finalized and one open pay period.
-- One demo account per role: owner, general manager, HR manager, operations manager, team leader, agent. The portfolio page signs visitors in with one click. Isolation between businesses is shown by the database tests rather than a second demo.
+- One demo account per role: Owner, Finance, Human Resources, Leader, Employee. The portfolio page signs visitors in with one click. Isolation between businesses is shown by the database tests rather than a second demo.
 - Demo data resets every night.
 - **Faces:** see Decisions to review. No real person's face is seeded.
 - Every sample name is invented and marked as sample data.

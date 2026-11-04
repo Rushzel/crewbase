@@ -1,6 +1,6 @@
 import { expect, test, type Browser } from "@playwright/test";
 
-// Demo Company, agent in Pasig East (a polygon around 14.577, 121.088).
+// Demo Company, an employee in Pasig East (a polygon around 14.577, 121.088).
 test.use({ permissions: ["geolocation"], geolocation: { latitude: 14.577, longitude: 121.088, accuracy: 8 } });
 
 // The demo has the face check on and time in from 5:00 AM. These tests are about time, not faces or
@@ -23,7 +23,7 @@ test.beforeAll(({ browser }) => setRules(browser, false));
 test.afterAll(({ browser }) => setRules(browser, true));
 
 test.beforeEach(async ({ page }) => {
-  await page.goto("/demo/staff");
+  await page.goto("/demo/employee");
   await expect(page).toHaveURL(/\/home/);
   await page.goto("/today");
   // The seed may have this person already working today; start from timed out.

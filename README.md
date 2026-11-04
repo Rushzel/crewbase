@@ -2,7 +2,7 @@
 
 A workforce system any business can sign up for. It covers:
 - time tracking with boundary and face checks;
-- areas with team leaders;
+- areas with leaders;
 - leave;
 - sales with customer confirmation;
 - correction requests;
@@ -24,9 +24,9 @@ npx supabase start          # local database in Docker, with migrations and demo
 npm run dev                 # http://localhost:3000
 ```
 
-Then open the home page and pick a role in **Demo Company**, a made-up field business with three areas: owner, general manager, HR manager, operations manager, team leader or agent.
+Then open the home page and pick a role in **Demo Company**, a made-up field business with three areas: Owner, Finance, Human Resources, Leader or Employee.
 
-To sign in by hand, use `owner@demo.crewbase.example`, or replace `owner` with `general-manager`, `hr`, `operations`, `team-leader` or `staff`. The password is `crewbase-demo`. Emails the app sends locally, such as sale confirmation links, appear in Supabase's test mailbox at http://127.0.0.1:54324.
+To sign in by hand, use `owner@demo.crewbase.example`, or replace `owner` with `finance`, `hr`, `leader` or `employee`. The password is `crewbase-demo`. Emails the app sends locally, such as sale confirmation links, appear in Supabase's test mailbox at http://127.0.0.1:54324.
 
 Copy `.env.example` to `.env.local` first; the local values are printed by `npx supabase status`.
 
@@ -60,7 +60,7 @@ The interface hides what you can't do, but only for convenience. The database is
 
 - **Multi-business by row-level security, not one database per client.** One schema is cheaper to run and change. Isolation is proven by tests instead of assumed.
 - **Fixed permissions, custom roles.** Businesses name their own roles ("Shift lead", "Team leader") from a fixed list of permissions, so the database knows exactly what each permission means. Each role also has a scope: only themself, their team, or everyone.
-- **Two starting templates.** "Small team" (owner, manager, employee) suits a café. "Field teams" has JedSkies' structure: general manager, HR manager, operations manager, team leaders and staff. A business can rename and change both.
+- **Two starting templates.** "Small team" (owner, manager, employee) suits a café. "Field teams" has JedSkies' structure with roles named by function: Finance, Human Resources, Leaders who lead areas, and Employees. A business can rename and change both.
 - **A team is the areas you lead plus your reports.** Field businesses organise by area, as JedSkies did; small businesses organise by who reports to whom. One rule covers both.
 - **Failed location checks flag, failed face checks block (by default).** Location fails for honest reasons (indoors, weak signal), so it goes to a manager instead of stopping work. A face mismatch is much stronger evidence. Both are settings.
 - **Balanced and strict edge rules.** Balanced accepts a reading just outside the fence when its accuracy circle reaches inside; strict needs the whole accuracy circle inside. Businesses with tight sites can choose strict.
@@ -88,7 +88,7 @@ The interface hides what you can't do, but only for convenience. The database is
 |---|---|---|
 | Database (pgTAP) | `npm run test:db` | 304 passing. Covers isolation, permissions, team visibility, time, location, face and liveness, and corrections. Also payroll worked examples (including leave and incentives), leave rules, sales and confirmation links, daily status, probation, analytics, the demo reset and invitations. |
 | Unit (Vitest) | `npm test` | 17 passing: formatting, contrast check, analytics flags and forecast |
-| End-to-end (Playwright) | `npm run test:e2e` | 20 passing. Covers demo sign-in for all six roles and their menus, the clock ignoring a device set to 2030, breaks, a flagged punch, and phone width. Also a team leader seeing only their area, a sale going from logged to customer confirmation to approval, and leave going from request to approval. |
+| End-to-end (Playwright) | `npm run test:e2e` | 19 passing. Covers demo sign-in for all five roles and their menus, the clock ignoring a device set to 2030, breaks, a flagged punch, and phone width. Also a team leader seeing only their area, a sale going from logged to customer confirmation to approval, and leave going from request to approval. |
 
 The payroll tests use hand-calculated examples, for example: 16 regular hours at ₱100 plus 2 overtime hours at 1.25× is ₱1,850 gross; less a ₱50 fund and 10% tax is ₱1,615 net.
 

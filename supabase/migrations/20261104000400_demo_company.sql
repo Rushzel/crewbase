@@ -1,8 +1,8 @@
--- The demo business: a made-up company whose field agents sell packages door to door,
+-- The demo business: a made-up company whose field employees sell packages door to door,
 -- organised the way JedSkies organised field teams. Every person and customer is invented.
 --
---   Owner, General Manager, HR Manager, Operations Manager
---   3 areas, each with a team leader and 3 agents; 2 agents not yet assigned to an area
+--   Owner, Finance (two people), Human Resources
+--   3 areas, each with a Leader and 3 Employees; 2 Employees not yet assigned to an area
 --   Man-days pay (daily rate, no shifts), Monday to Saturday, start 9:00, absent after 10:00
 --   Customer applications at every stage, leave, corrections, a finalized pay period
 
@@ -23,16 +23,16 @@ declare
     'POLYGON((121.0900 14.6300, 121.1100 14.6280, 121.1150 14.6450, 121.0980 14.6520, 121.0880 14.6420, 121.0900 14.6300))',
     'POLYGON((121.1080 14.5680, 121.1270 14.5660, 121.1300 14.5830, 121.1150 14.5900, 121.1060 14.5800, 121.1080 14.5680))'];
   v_names text[] := array[
-    'Celia Ramirez', 'Victor Agustin', 'Nora Palma', 'Ramon de Vera',            -- owner, general manager, HR, operations
-    'Lito Ferrer', 'Jen Manzano', 'Oscar Tolentino',                            -- team leaders
+    'Celia Ramirez', 'Victor Agustin', 'Nora Palma', 'Ramon de Vera',            -- owner, finance, human resources, finance
+    'Lito Ferrer', 'Jen Manzano', 'Oscar Tolentino',                            -- leaders
     'Abby Cruzado', 'Mark Ilagan', 'Toni Reyes', 'Kris Dela Paz', 'Ely Sarmiento', 'Rina Gatdula',
     'Benjie Salonga', 'Pam Quiambao', 'Noel Arceo', 'Shiela Bernal', 'Dom Pangilinan'];
-  v_titles text[] := array['Owner', 'General Manager', 'HR Manager', 'Operations Manager',
-    'Team Leader', 'Team Leader', 'Team Leader', 'Staff', 'Staff', 'Staff', 'Staff', 'Staff', 'Staff', 'Staff', 'Staff', 'Staff', 'Staff', 'Staff'];
+  v_titles text[] := array['Owner', 'Finance', 'Human Resources', 'Finance',
+    'Leader', 'Leader', 'Leader', 'Employee', 'Employee', 'Employee', 'Employee', 'Employee', 'Employee', 'Employee', 'Employee', 'Employee', 'Employee', 'Employee'];
   -- People with a demo sign-in (role key used in the email), by position.
-  v_logins text[] := array['owner', 'general-manager', 'hr', 'operations', 'team-leader', null, null, 'staff'];
+  v_logins text[] := array['owner', 'finance', 'hr', null, 'leader', null, null, 'employee'];
   v_m uuid[] := '{}';
-  v_ops uuid;
+  v_finance uuid;
   v_customers text[] := array['Andrea', 'Bernard', 'Carmina', 'Danilo', 'Erika', 'Ferdie', 'Gemma', 'Hector', 'Iris', 'Jomar',
     'Karla', 'Leo', 'Minda', 'Nilo', 'Ofelia', 'Percy', 'Queenie', 'Rolly', 'Sandra', 'Tomas'];
   v_surnames text[] := array['Abad', 'Basa', 'Carpio', 'Dimaculangan', 'Espiritu', 'Florido', 'Garces', 'Hilario', 'Ignacio', 'Jacinto'];
@@ -71,7 +71,8 @@ begin
     values (m, 'polygon', extensions.st_geogfromtext('SRID=4326;' || v_shapes[i]));
   end loop;
 
-  -- People. Managers report up the chain; agents report to their area's team leader.
+  -- People. Leaders report to the owner, Employees to their area's Leader; Employees with no area
+  -- yet report to Human Resources, who assigns areas.
   for i in 1 .. 18 loop
     m := private.demo_user('demo-person-' || i,
       coalesce(v_logins[i], 'sample' || i) || '@demo.crewbase.example',
@@ -81,8 +82,8 @@ begin
     values (private.demo_uuid('demo-member-' || i), v_org, m, v_names[i], 'SAMPLE-' || lpad(i::text, 3, '0'),
       (v_roles ->> v_titles[i])::uuid,
       case when i = 1 then null when i in (2, 3) then private.demo_uuid('demo-member-1')
-           when i = 4 then private.demo_uuid('demo-member-2') when i between 5 and 7 then private.demo_uuid('demo-member-4')
-           when i between 8 and 16 then private.demo_uuid('demo-member-' || (4 + v_area)) else private.demo_uuid('demo-member-4') end,
+           when i = 4 then private.demo_uuid('demo-member-2') when i between 5 and 7 then private.demo_uuid('demo-member-1')
+           when i between 8 and 16 then private.demo_uuid('demo-member-' || (4 + v_area)) else private.demo_uuid('demo-member-3') end,
       (case when i in (15, 16, 18) then 'provisional' else 'regular' end)::public.employment_type, 'active',
       case when i in (15, 16) then v_today - 120 when i = 18 then v_today - 45 else v_today - (60 * i + 240) end)
     returning id into m;
@@ -95,7 +96,7 @@ begin
       values (v_org, m, 'daily', case when i <= 7 then 80000 else 64500 end, v_today - 400);
     end if;
   end loop;
-  v_ops := v_m[4];
+  v_finance := v_m[4];   -- the Finance officer who approves sales and timesheets
 
   insert into public.deduction_rules (org_id, name, kind, value, is_sample) values
     (v_org, 'Social security', 'percent', 4.5, true), (v_org, 'Health insurance', 'percent', 2.5, true),
@@ -105,7 +106,7 @@ begin
     (v_org, 'Starter package', 'Equipment and installation', 4500000, 150000, true, false, 1),
     (v_org, 'Upgrade add-on', 'Add-on for an existing package', 2800000, 80000, true, false, 2),
     (v_org, 'Basic package', 'Entry-level package, approved once the customer confirms', 350000, 15000, true, true, 3),
-    (v_org, 'Consultation booking', 'Free consultation, paid to the agent as a lead', 0, 10000, false, false, 4);
+    (v_org, 'Consultation booking', 'Free consultation, paid to the seller as a lead', 0, 10000, false, false, 4);
   select array_agg(id order by sort) into v_products from public.products where org_id = v_org;
 
   -- Leave first, so nobody has time on a day they were on leave.
@@ -122,11 +123,11 @@ begin
     ) x (i, type, d_from, d_to, reason, st, note)
   join public.leave_types lt on lt.org_id = v_org and lt.name = x.type;
 
-  -- Eight weeks of time for team leaders and agents, Monday to Saturday, and their sales.
+  -- Eight weeks of time for leaders and employees, Monday to Saturday, and their sales.
   for i in 5 .. 18 loop
     m := v_m[i];
     v_area := coalesce(case when i between 5 and 7 then i - 4 when i between 8 and 16 then 1 + (i - 8) / 3 end, 1 + i % 3);
-    v_bias := case when i in (9, 13) then 28 when i = 17 then 12 else 0 end;   -- two habitually late agents, one sometimes
+    v_bias := case when i in (9, 13) then 28 when i = 17 then 12 else 0 end;   -- two habitually late employees, one sometimes
     for d in select gs::date from generate_series(v_today - 56, v_today, interval '1 day') gs loop
       continue when extract(isodow from d) = 7;
       continue when exists (select 1 from public.leave_requests lr where lr.membership_id = m and lr.status = 'approved' and d between lr.starts_on and lr.ends_on);
@@ -152,7 +153,7 @@ begin
       perform private.seed_punch(v_org, m, v_entry, v_areas[v_area], 'in', v_in);
       perform private.seed_punch(v_org, m, v_entry, v_areas[v_area], 'out', v_out);
 
-      -- Sales: agents most days, team leaders now and then.
+      -- Sales: employees most days, leaders now and then.
       for k in 1 .. 2 loop
         continue when random() > case when i <= 7 then 0.08 when k = 1 then 0.42 else 0.12 end;
         n := n + 1;
@@ -186,7 +187,7 @@ begin
           case when v_status in ('awaiting_verification', 'follow_up') then v_created + interval '7 days' end,
           case when p.needs_verification then v_created end,
           case when v_status in ('for_approval', 'approved', 'rejected') and p.needs_verification then v_created + interval '5 hours' end,
-          case when v_status = 'rejected' or (v_status = 'approved' and not p.auto_approve) then v_ops end,
+          case when v_status = 'rejected' or (v_status = 'approved' and not p.auto_approve) then v_finance end,
           case when v_status in ('approved', 'rejected') then least(v_created + interval '1 day' + make_interval(hours => round(random() * 30)::int), now()) end,
           case when v_status = 'rejected' then 'Customer is outside our service area'
                when v_status = 'cancelled' then 'Customer changed their mind'
@@ -223,7 +224,7 @@ begin
   insert into public.pay_periods (org_id, starts_on, ends_on) values (v_org, v_end_a + 1,
     case when extract(day from v_end_a + 1) = 1 then (v_end_a + 1) + 14 else (date_trunc('month', v_end_a + 1) + interval '1 month - 1 day')::date end);
   insert into public.timesheet_approvals (period_id, membership_id, approved_by, approved_at)
-  select v_period_a, mm, v_ops, now() - interval '3 days' from private.period_members(v_period_a) mm where mm <> v_ops;
+  select v_period_a, mm, v_finance, now() - interval '3 days' from private.period_members(v_period_a) mm where mm <> v_finance;
   update public.pay_periods set status = 'locked', locked_by = v_m[1], locked_at = now() - interval '2 days' where id = v_period_a;
   perform private.build_payslip(v_period_a, mm) from private.period_members(v_period_a) mm;
   update public.payslips set status = 'final' where period_id = v_period_a;

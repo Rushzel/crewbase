@@ -360,8 +360,8 @@ create trigger audit_role_permissions after insert or delete on public.role_perm
 
 -- Templates:
 --   small: Owner, Manager (their reports), Employee.
---   field: JedSkies' structure for teams spread over areas: Owner, General Manager, HR Manager,
---          Operations Manager (everyone), Team Leader (their areas and reports), Staff (themself).
+--   field: for teams spread over areas, named by function: Owner, Finance and Human Resources
+--          (everyone), Leader (their areas and reports), Employee (themself).
 -- Roles are only a starting point: a business can rename them and change their permissions.
 create function public.create_organization(
   p_name text, p_slug text, p_display_name text,
@@ -413,11 +413,10 @@ language sql immutable set search_path = '' as $$
   select v.name, v.scope, v.permissions from (values
     ('small', 1, 'Manager', 'team'::public.role_scope, '{time.clock,time.edit,requests.review,schedule.manage,analytics.view,face.enroll_others,leave.review}'::public.app_permission[]),
     ('small', 2, 'Employee', 'own', '{time.clock,analytics.view}'),
-    ('field', 1, 'General Manager', 'all', '{analytics.view,people.manage,payroll.run,audit.view,leave.review,requests.review,sales.review,time.edit,schedule.manage}'),
-    ('field', 2, 'HR Manager', 'all', '{people.manage,leave.review,payroll.run,audit.view,analytics.view}'),
-    ('field', 3, 'Operations Manager', 'all', '{sites.manage,people.manage,time.edit,requests.review,schedule.manage,leave.review,sales.review,products.manage,analytics.view,face.enroll_others}'),
-    ('field', 4, 'Team Leader', 'team', '{time.clock,sales.log,face.enroll_others,analytics.view}'),
-    ('field', 5, 'Staff', 'own', '{time.clock,sales.log,analytics.view}')
+    ('field', 1, 'Finance', 'all', '{payroll.run,sales.review,products.manage,analytics.view,audit.view}'),
+    ('field', 2, 'Human Resources', 'all', '{people.manage,sites.manage,leave.review,audit.view,analytics.view}'),
+    ('field', 3, 'Leader', 'team', '{time.clock,sales.log,requests.review,time.edit,face.enroll_others,analytics.view}'),
+    ('field', 4, 'Employee', 'own', '{time.clock,sales.log,analytics.view}')
   ) v (template, ord, name, scope, permissions)
   where v.template = p_template
   order by v.ord

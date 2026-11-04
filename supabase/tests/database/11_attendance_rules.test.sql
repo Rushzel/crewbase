@@ -1,5 +1,5 @@
 -- Phase 2 criteria 49, 50, 53, 58, 59, 60 and 62: daily status, earliest time in, leave and sales
--- on payslips, team leader face enrollment, probation, and who reads the audit trail.
+-- on payslips, leader face enrollment, probation, and who reads the audit trail.
 begin;
 select no_plan();
 
@@ -39,11 +39,11 @@ create function pg_temp.add(p_key text, p_user text, p_role text) returns void l
     from public.roles r where r.org_id = pg_temp.id('org') and r.name = p_role returning id)
   insert into ids select p_key, id from m
 $$;
-select pg_temp.add('hr', '02', 'HR Manager');
-select pg_temp.add('pia', '03', 'Staff');
-select pg_temp.add('rio', '04', 'Staff');
-select pg_temp.add('lead', '05', 'Team Leader');
-select pg_temp.add('far', '06', 'Staff');
+select pg_temp.add('hr', '02', 'Human Resources');
+select pg_temp.add('pia', '03', 'Employee');
+select pg_temp.add('rio', '04', 'Employee');
+select pg_temp.add('lead', '05', 'Leader');
+select pg_temp.add('far', '06', 'Employee');
 with s as (insert into public.sites (org_id, name) values (pg_temp.id('org'), 'Central') returning id) insert into ids select 'site', id from s;
 with s as (insert into public.sites (org_id, name) values (pg_temp.id('org'), 'Outer') returning id) insert into ids select 'outer', id from s;
 insert into public.member_sites (membership_id, site_id, is_leader) values
@@ -94,7 +94,7 @@ reset role;
 select pg_temp.login('03');
 set local role authenticated;
 select is((select count(distinct membership_id)::int from public.attendance_days(pg_temp.id('org'), pg_temp.d(0), pg_temp.d(13))), 1,
-  'staff see only their own days');
+  'employees see only their own days');
 reset role;
 select pg_temp.login('07');
 set local role authenticated;
@@ -161,7 +161,7 @@ select is(pg_temp.line('rio', 'Basic pay'), '3.00 days = 180000', 'basic pay cov
 select is(pg_temp.line('rio', 'Unpaid leave%'), '1.00 days = 60000', 'the unpaid leave day is deducted as leave');
 select is(pg_temp.line('rio', 'Absences%'), '1.00 days = 60000', 'only the missed Sunday is an absence');
 
--- Criterion 59: a team leader enrolls faces in their area only, and only with consent.
+-- Criterion 59: a leader enrolls faces in their area only, and only with consent.
 select pg_temp.login('05');
 set local role authenticated;
 select throws_ok($$ select public.enroll_face(pg_temp.id('pia'),
@@ -169,7 +169,7 @@ select throws_ok($$ select public.enroll_face(pg_temp.id('pia'),
   'test-model-1', false) $$, 'P0001', null, 'not without consent');
 select lives_ok($$ select public.enroll_face(pg_temp.id('pia'),
   jsonb_build_array(to_jsonb(pg_temp.embedding(1, 0.02)), to_jsonb(pg_temp.embedding(2, 0.02)), to_jsonb(pg_temp.embedding(3, 0.02))),
-  'test-model-1', true) $$, 'the team leader enrolls someone in their area');
+  'test-model-1', true) $$, 'the leader enrolls someone in their area');
 select throws_ok($$ select public.enroll_face(pg_temp.id('far'),
   jsonb_build_array(to_jsonb(pg_temp.embedding(1, 0.02)), to_jsonb(pg_temp.embedding(2, 0.02)), to_jsonb(pg_temp.embedding(3, 0.02))),
   'test-model-1', true) $$, '42501', null, 'but not someone in another area');
@@ -186,7 +186,7 @@ select is((select employment_type::text from public.memberships where id = pg_te
 select is((select reason from public.audit_log where table_name = 'memberships' and row_id = pg_temp.id('far')::text
            and new_value ->> 'employment_type' = 'regular'), 'Probation completed', 'the promotion is in the audit log with its reason');
 
--- The owner changes the phase 2 rules through the API role; staff can't.
+-- The owner changes the phase 2 rules through the API role; employees can't.
 select pg_temp.login('01');
 set local role authenticated;
 select lives_ok($$ update public.org_settings set area_label = 'Branch', area_label_plural = 'Branches', earliest_clock_in = '06:00',
@@ -198,7 +198,7 @@ select pg_temp.login('03');
 set local role authenticated;
 update public.org_settings set area_label = 'Hacked' where org_id = pg_temp.id('org');
 reset role;
-select is((select area_label from public.org_settings where org_id = pg_temp.id('org')), 'Branch', 'staff can''t change settings');
+select is((select area_label from public.org_settings where org_id = pg_temp.id('org')), 'Branch', 'employees can''t change settings');
 
 -- Criterion 62: the audit trail.
 select pg_temp.login('02');
@@ -207,11 +207,11 @@ select ok((select count(*) from public.audit_log) > 0, 'HR, with audit.view, rea
 reset role;
 select pg_temp.login('05');
 set local role authenticated;
-select is((select count(*)::int from public.audit_log), 0, 'a team leader does not');
+select is((select count(*)::int from public.audit_log), 0, 'a leader does not');
 reset role;
 select pg_temp.login('03');
 set local role authenticated;
-select is((select count(*)::int from public.audit_log), 0, 'nor does staff');
+select is((select count(*)::int from public.audit_log), 0, 'nor does an employee');
 reset role;
 
 select * from finish();

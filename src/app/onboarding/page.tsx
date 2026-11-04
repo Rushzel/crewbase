@@ -30,7 +30,7 @@ export default function OnboardingPage() {
             </label>
             <label className="flex gap-2 rounded-xl border border-line p-3 text-sm">
               <input type="radio" name="template" value="field" className="mt-1" />
-              <span><span className="font-medium">Field teams</span><span className="block text-muted">General manager, HR, operations, team leaders who lead areas, and staff. Sales and incentives switched on.</span></span>
+              <span><span className="font-medium">Field teams</span><span className="block text-muted">Finance, Human Resources, Leaders who lead areas, and Employees. Sales and incentives switched on.</span></span>
             </label>
             <p className="mt-1 text-xs text-muted">You can rename roles, change permissions and switch features on or off later.</p>
           </fieldset>

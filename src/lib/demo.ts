@@ -3,14 +3,13 @@
 export const DEMO = {
   slug: "demo-company",
   name: "Demo Company",
-  about: "Field agents selling packages in three areas, with team leaders, face check with liveness, leave, sales and payroll.",
+  about: "Field employees selling packages in three areas, with leaders, face check with liveness, leave, sales and payroll.",
   roles: [
     { key: "owner", label: "Owner", sees: "Everything" },
-    { key: "general-manager", label: "General manager", sees: "The whole business, payroll and approvals" },
-    { key: "hr", label: "HR manager", sees: "Accounts, leave, payroll and the audit trail" },
-    { key: "operations", label: "Operations manager", sees: "Areas, teams, attendance and sales approvals" },
-    { key: "team-leader", label: "Team leader", sees: "Their area's agents, rankings and face enrollment" },
-    { key: "staff", label: "Agent", sees: "Time in and out, sales, leave and payslips" },
+    { key: "finance", label: "Finance", sees: "Payroll, pay rates, sales approvals and products" },
+    { key: "hr", label: "Human Resources", sees: "Accounts, areas and teams, leave and the audit trail" },
+    { key: "leader", label: "Leader", sees: "Their area's team, corrections, rankings and face enrollment" },
+    { key: "employee", label: "Employee", sees: "Time in and out, sales, leave and payslips" },
   ],
 } as const;
 

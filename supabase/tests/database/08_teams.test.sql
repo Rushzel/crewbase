@@ -26,8 +26,8 @@ reset role;
 
 select results_eq(
   $$ select name || ':' || scope from public.roles where org_id = pg_temp.id('org') order by name $$,
-  array['General Manager:all', 'HR Manager:all', 'Operations Manager:all', 'Owner:all', 'Staff:own', 'Team Leader:team'],
-  'the field template creates six roles with their scopes');
+  array['Employee:own', 'Finance:all', 'Human Resources:all', 'Leader:team', 'Owner:all'],
+  'the field template creates five roles, named by function, with their scopes');
 select results_eq(
   $$ select name from public.roles where org_id = pg_temp.id('small') order by name $$,
   array['Employee', 'Manager', 'Owner'], 'the small template keeps three roles');
@@ -37,13 +37,15 @@ create function pg_temp.perms(p_role text) returns text[] language sql as $$
   from public.role_permissions rp join public.roles r on r.id = rp.role_id
   where r.org_id = pg_temp.id('org') and r.name = p_role
 $$;
-select is(pg_temp.perms('Staff'), array['analytics.view', 'sales.log', 'time.clock'], 'staff can time in and log sales');
-select is(pg_temp.perms('Team Leader'), array['analytics.view', 'face.enroll_others', 'sales.log', 'time.clock'],
-  'team leaders also enroll faces');
-select ok('sales.review' = any(pg_temp.perms('Operations Manager')) and 'sites.manage' = any(pg_temp.perms('Operations Manager')),
-  'operations managers approve sales and manage areas');
-select ok('audit.view' = any(pg_temp.perms('HR Manager')) and not 'sites.manage' = any(pg_temp.perms('HR Manager')),
-  'HR managers read the audit trail but do not manage areas');
+select is(pg_temp.perms('Employee'), array['analytics.view', 'sales.log', 'time.clock'], 'employees can time in and log sales');
+select is(pg_temp.perms('Leader'), array['analytics.view', 'face.enroll_others', 'requests.review', 'sales.log', 'time.clock', 'time.edit'],
+  'leaders also approve their team''s corrections, edit their time and enroll faces');
+select ok('sales.review' = any(pg_temp.perms('Finance')) and 'payroll.run' = any(pg_temp.perms('Finance'))
+  and not 'people.manage' = any(pg_temp.perms('Finance')),
+  'finance approves sales and runs payroll, but does not manage people');
+select ok('people.manage' = any(pg_temp.perms('Human Resources')) and 'sites.manage' = any(pg_temp.perms('Human Resources'))
+  and 'audit.view' = any(pg_temp.perms('Human Resources')) and not 'payroll.run' = any(pg_temp.perms('Human Resources')),
+  'human resources manages people, areas and the audit trail, but does not run payroll');
 select is((select count(*)::int from public.role_permissions rp join public.roles r on r.id = rp.role_id
            where r.org_id = pg_temp.id('org') and r.is_owner),
   (select count(*)::int from unnest(enum_range(null::public.app_permission))), 'the owner has every permission');
@@ -51,8 +53,8 @@ select ok((select enabled from public.org_features where org_id = pg_temp.id('or
 select ok(not (select enabled from public.org_features where org_id = pg_temp.id('small') and feature = 'sales'), 'and off for small teams');
 select ok((select enabled from public.org_features where org_id = pg_temp.id('small') and feature = 'leave'), 'leave is on by default');
 
--- People: a leader of North, staff in North and South, a report of the leader with no area,
--- another North member who is not a leader, and an operations manager.
+-- People: a leader of North, employees in North and South, a report of the leader with no area,
+-- another North member who is not a leader, and someone in Finance (who sees everyone).
 create function pg_temp.add(p_key text, p_user text, p_name text, p_role text, p_manager text default null) returns void
 language sql as $$
   with m as (
@@ -62,12 +64,12 @@ language sql as $$
     returning id)
   insert into ids select p_key, m.id from m
 $$;
-select pg_temp.add('lead', '02', 'Lea Sample', 'Team Leader');
-select pg_temp.add('north', '03', 'Nat Sample', 'Staff');
-select pg_temp.add('south', '04', 'Sol Sample', 'Staff');
-select pg_temp.add('report', '05', 'Rey Sample', 'Staff', 'lead');
-select pg_temp.add('peer', '06', 'Pia Sample', 'Team Leader');
-select pg_temp.add('ops', '07', 'Oda Sample', 'Operations Manager');
+select pg_temp.add('lead', '02', 'Lea Sample', 'Leader');
+select pg_temp.add('north', '03', 'Nat Sample', 'Employee');
+select pg_temp.add('south', '04', 'Sol Sample', 'Employee');
+select pg_temp.add('report', '05', 'Rey Sample', 'Employee', 'lead');
+select pg_temp.add('peer', '06', 'Pia Sample', 'Leader');
+select pg_temp.add('ops', '07', 'Oda Sample', 'Finance');
 insert into ids select 'owner', id from public.memberships where org_id = pg_temp.id('org') and user_id = '00000000-0000-0000-0000-000000000801';
 
 with s as (insert into public.sites (org_id, name) values (pg_temp.id('org'), 'North') returning id) insert into ids select 'n_site', id from s;
@@ -100,24 +102,24 @@ grant execute on function pg_temp.seen() to authenticated;
 select pg_temp.login('02');
 set local role authenticated;
 select is(pg_temp.seen(), array['lead', 'north', 'peer', 'report'],
-  'a team leader sees their area and their reports, and not other areas');
+  'a leader sees their area and their reports, and not other areas');
 select ok(private.can_see_member(pg_temp.id('north')) and not private.can_see_member(pg_temp.id('south')),
   'the helper used by functions agrees');
 reset role;
 
 select pg_temp.login('06');
 set local role authenticated;
-select is(pg_temp.seen(), array['peer'], 'a team leader who does not lead the area sees only themself');
+select is(pg_temp.seen(), array['peer'], 'a leader who does not lead the area sees only themself');
 reset role;
 
 select pg_temp.login('03');
 set local role authenticated;
-select is(pg_temp.seen(), array['north'], 'staff see only themself');
+select is(pg_temp.seen(), array['north'], 'employees see only themself');
 reset role;
 
 select pg_temp.login('07');
 set local role authenticated;
-select is(pg_temp.seen(), array['lead', 'north', 'ops', 'owner', 'peer', 'report', 'south'], 'operations managers see everyone');
+select is(pg_temp.seen(), array['lead', 'north', 'ops', 'owner', 'peer', 'report', 'south'], 'finance sees everyone');
 reset role;
 
 -- Leading stops when the flag is removed.
@@ -143,14 +145,14 @@ select is((select count(*)::int from public.audit_log where table_name = 'role_p
 select pg_temp.login('01');
 set local role authenticated;
 insert into public.role_permissions (role_id, permission)
-select id, 'leave.review' from public.roles where org_id = pg_temp.id('org') and name = 'Team Leader';
+select id, 'leave.review' from public.roles where org_id = pg_temp.id('org') and name = 'Leader';
 delete from public.role_permissions
-where role_id = (select id from public.roles where org_id = pg_temp.id('org') and name = 'Team Leader') and permission = 'sales.log';
+where role_id = (select id from public.roles where org_id = pg_temp.id('org') and name = 'Leader') and permission = 'sales.log';
 reset role;
 select results_eq(
   $$ select action || ':' || (coalesce(new_value, old_value) ->> 'role') || ':' || (coalesce(new_value, old_value) ->> 'permission')
      from public.audit_log where table_name = 'role_permissions' and org_id = pg_temp.id('org') order by id $$,
-  array['insert:Team Leader:leave.review', 'delete:Team Leader:sales.log'],
+  array['insert:Leader:leave.review', 'delete:Leader:sales.log'],
   'adding and removing a permission are both audited');
 
 select * from finish();

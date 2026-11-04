@@ -19,8 +19,8 @@ Updated 4 Nov 2026.
 
 **Phase 2 (4 Nov), JedSkies' main features** (plan: `docs/PHASE-2.md`):
 - **Faster visibility rules.** Policies work out the reader's visible people once per query instead of walking the manager chain for every row. Every phase 1 test still passes.
-- **Areas with team leaders.** A team leader's team is the people in the areas they lead plus their reports. A person and an area must belong to the same business, enforced by composite keys.
-- **Role templates.** "Small team" or "Field teams", the latter being JedSkies' structure: general manager, HR manager, operations manager, team leader, staff.
+- **Areas with leaders.** A leader's team is the people in the areas they lead plus their reports. A person and an area must belong to the same business, enforced by composite keys.
+- **Role templates.** "Small team" or "Field teams". Field teams has JedSkies' structure, with roles named by function: Finance, Human Resources, Leader, Employee (renamed 4 Nov at Kidd's request).
 - **Attendance rules.** Daily status (present, late, half day, absent, on leave) is calculated from the business's own rules. An optional earliest time-in is enforced by `clock_in`.
 - **Leave.** Types with yearly allowances, paid or unpaid, optional or required attachments in a private bucket, and review with reasons.
 - **Sales.** Products, customer applications, a one-use confirmation link by email, follow-up after set hours, optional automatic approval, and incentives on payslips.
@@ -34,13 +34,13 @@ Updated 4 Nov 2026.
   - sales and products;
   - the customer confirmation page;
   - audit trail;
-  - team leaders enrolling their team's faces;
+  - leaders enrolling their team's faces;
   - hire dates;
   - the new settings;
   - template choice when a business is set up.
-- **Demo.** One made-up business, Demo Company: field agents in three areas, with an account for each of the six roles. (The café demo was removed on 4 Nov at Kidd's request.)
+- **Demo.** One made-up business, Demo Company: field employees in three areas, with an account for each of the five roles. (The café demo was removed on 4 Nov at Kidd's request.)
 - **Also:** a roles editor (permission changes are audited one by one), invitation emails, and editing a sale's customer details.
-- **Tests: 304 database, 17 unit and 20 end-to-end, all passing. Lint, types and the production build pass.**
+- **Tests: 304 database, 17 unit and 19 end-to-end, all passing. Lint, types and the production build pass.**
 
 ## Test results
 | File | Tests | Covers |
@@ -55,9 +55,9 @@ Updated 4 Nov 2026.
 | `08_teams` | 24 | Both templates and their permissions, area leaders, team visibility by area and by reports, same-business keys, audit of area teams and of permission changes |
 | `09_leave` | 27 | Working days, allowance including pending, overlaps, attachments in your own folder, review rules, locked periods, withdrawing |
 | `10_sales` | 33 | Product rights, logging, unreadable token hashes, one-use and expiring links, auto-approval, follow-up, corrections, own-sale rule |
-| `11_attendance_rules` | 38 | Every daily status, shifts against working days, business rules, earliest time in, paid and unpaid leave and incentives on payslips, team leader face enrollment, probation, changing the new settings, audit access |
+| `11_attendance_rules` | 38 | Every daily status, shifts against working days, business rules, earliest time in, paid and unpaid leave and incentives on payslips, leader face enrollment, probation, changing the new settings, audit access |
 | Vitest (`src/lib`) | 17 | Formatting, contrast check, analytics flags and forecast |
-| Playwright (`e2e`) | 20 | Demo sign-in for all six roles and their menus, a role built in the roles editor and found in the audit trail, an invitation arriving in the test mailbox, redirects, device clock set to 2030, breaks, flagged punch, phone width, a team leader's view, areas, a sale from logging to customer confirmation to approval, leave from request to approval |
+| Playwright (`e2e`) | 19 | Demo sign-in for all five roles and their menus, a role built in the roles editor and found in the audit trail, an invitation arriving in the test mailbox, redirects, device clock set to 2030, breaks, flagged punch, phone width, a team leader's view, areas, a sale from logging to customer confirmation to approval, leave from request to approval |
 
 ## Bugs the tests caught (and fixed)
 1. Deleting an entry tried to update append-only evidence through a foreign key. Evidence now keeps the entry ID as a plain value.
@@ -79,14 +79,14 @@ Updated 4 Nov 2026.
 5. Late minutes count from the shift start, but only after the grace minutes (default 15).
 6. Monthly-rated staff are paid per scheduled day at the monthly rate × 12 ÷ 261.
 7. Sample deductions use generic names with illustrative rates labelled "(sample rate)".
-8. **Demo sign-ins:** `owner@demo.crewbase.example`, and the same with `general-manager`, `hr`, `operations`, `team-leader` or `staff` in place of `owner`. The password is `crewbase-demo`, and these accounts can't change their email or password.
+8. **Demo sign-ins:** `owner@demo.crewbase.example`, and the same with `finance`, `hr`, `leader` or `employee` in place of `owner`. The password is `crewbase-demo`, and these accounts can't change their email or password.
 9. The original capstone's real names, company and data are not used anywhere.
 10. The liveness action "smile" became "open mouth", because the face library has no smile gesture.
 11. The face match threshold defaults to 0.60 and **isn't calibrated on real cameras yet**.
 12. "Turn left" hasn't been checked on a real camera; if it's mirrored, swap the mappings in `src/lib/face.ts`.
 13. Payroll opens on the newest period.
-14. **Two role templates instead of one fixed set.** A café doesn't need team leaders and operations managers; a field business does. Both are only starting points, and roles can be renamed.
-15. **A team leader's team is the areas they lead plus their reports.** JedSkies used areas only; keeping reports as well means small businesses without areas still work.
+14. **Two role templates instead of one fixed set.** A café doesn't need leaders of areas and separate finance and HR roles; a field business does. Both are only starting points, and roles can be renamed.
+15. **A leader's team is the areas they lead plus their reports.** JedSkies used areas only; keeping reports as well means small businesses without areas still work.
 16. **Leave: no overlapping requests, instead of "one pending request at a time".** The JedSkies rule blocked someone from filing next month's holiday while a sick day was pending.
 17. **Default leave types:** Sick (5 days, paid), Vacation (5 days, paid), Emergency (unpaid, no limit). They are made-up starting values, not legal entitlements, and each business changes them.
 18. **Daily status keeps JedSkies' rules as settings:**
@@ -98,6 +98,10 @@ Updated 4 Nov 2026.
 21. **Price is copied when a sale is logged, and the incentive when it's approved.** Changing a product never rewrites past sales.
 22. **Reports, exports and forecasting pages are not built,** following Kidd's direction. The data they need is in place.
 23. **Email:** locally it goes to Supabase's test mailbox (http://127.0.0.1:54324). Going live needs an email provider (added to the accounts checklist). Without one, the link is shown on screen.
+24. **Roles are named by function, not job title** (Kidd, 4 Nov): Owner, Finance, Human Resources, Leader, Employee. With no operations role, its work is split:
+    - areas and teams go to Human Resources;
+    - corrections and time edits go to Leaders, for their own team;
+    - sales approvals and products go to Finance.
 
 ## Blockers
 - None for local work. Pushing, Supabase cloud, Vercel and an email provider wait for Kidd (see `../portfolio-site/docs/ACCOUNTS-CHECKLIST.md`).
@@ -109,5 +113,5 @@ Updated 4 Nov 2026.
 - **Reports and exports** (decision 22).
 
 ## Next step
-1. Kidd: try the demo (`npx supabase start`, `npm run dev`, then http://localhost:3000) and review decisions 14 to 23.
+1. Kidd: try the demo (`npx supabase start`, `npm run dev`, then http://localhost:3000) and review decisions 14 to 24.
 2. Then the coach manager and the medicine tracker.

@@ -8,7 +8,7 @@ import { AreaMap } from "@/components/area-map";
 
 export const metadata = { title: "Areas" };
 
-// Where people work and who leads each place. A team leader's team is the people in the areas they lead.
+// Where people work and who leads each place. A leader's team is the people in the areas they lead.
 export default async function AreasPage() {
   const { supabase, org, settings, can } = await getContext();
   if (!can("sites.manage") && !can("people.manage")) redirect("/home");
@@ -79,7 +79,7 @@ export default async function AreasPage() {
           {unassigned.length > 0 && (
             <section className="card">
               <h2 className="font-semibold">Not in any {label}</h2>
-              <p className="mb-2 text-xs text-muted">They can&apos;t time in until they&apos;re added to a {label}, and no team leader sees them.</p>
+              <p className="mb-2 text-xs text-muted">They can&apos;t time in until they&apos;re added to a {label}, and no leader sees them.</p>
               <ul className="text-sm">{unassigned.map((u) => <li key={u.id} className="py-0.5">{u.display_name}</li>)}</ul>
             </section>
           )}

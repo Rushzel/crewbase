@@ -7,7 +7,7 @@ import { captureForEnrollment, MODEL_VERSION, startCamera, stopCamera } from "@/
 
 const CAPTURES = 5;
 
-// Enrolls the signed-in person, or, for a team leader, someone in their team who is present and agrees.
+// Enrolls the signed-in person, or, for a leader, someone in their team who is present and agrees.
 export function FaceEnroll({ memberId, enrolled, personName }: { memberId: string; enrolled: boolean; personName?: string }) {
   const router = useRouter();
   const video = useRef<HTMLVideoElement>(null);

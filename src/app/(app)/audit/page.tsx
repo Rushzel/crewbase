@@ -23,7 +23,7 @@ function changes(oldV: unknown, newV: unknown): string[] {
     .map((k) => k.replace(/_/g, " "));
 }
 
-// A role permission change, as "Team Leader: leave.review".
+// A role permission change, as "Leader: leave.review".
 function permissionChange(v: unknown): string | undefined {
   const p = v as { role?: string; permission?: string } | null;
   return p?.role && p.permission ? `${p.role}: ${p.permission}` : undefined;

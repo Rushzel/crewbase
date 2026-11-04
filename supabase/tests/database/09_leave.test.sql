@@ -28,9 +28,9 @@ create function pg_temp.add(p_key text, p_user text, p_role text) returns void l
     from public.roles r where r.org_id = pg_temp.id('org') and r.name = p_role returning id)
   insert into ids select p_key, id from m
 $$;
-select pg_temp.add('hr', '02', 'HR Manager');
-select pg_temp.add('sam', '03', 'Staff');
-select pg_temp.add('tia', '04', 'Staff');
+select pg_temp.add('hr', '02', 'Human Resources');
+select pg_temp.add('sam', '03', 'Employee');
+select pg_temp.add('tia', '04', 'Employee');
 insert into ids select 'sick', id from public.leave_types where org_id = pg_temp.id('org') and name = 'Sick';
 insert into ids select 'emergency', id from public.leave_types where org_id = pg_temp.id('org') and name = 'Emergency';
 
@@ -63,8 +63,8 @@ select throws_ok($$ insert into public.leave_requests (org_id, membership_id, le
 select throws_ok($$ select public.request_leave(pg_temp.id('org'), pg_temp.id('sick'), pg_temp.mon(14), pg_temp.mon(14), null,
   pg_temp.id('org') || '/' || pg_temp.id('tia') || '/note.pdf') $$,
   '42501', 'The attachment must be one you uploaded', 'an attachment must be in your own folder');
-select is((select count(*)::int from public.leave_requests), 1, 'staff see only their own leave');
-select throws_ok($$ select public.review_leave(pg_temp.id('r1'), true) $$, '42501', null, 'staff cannot approve leave');
+select is((select count(*)::int from public.leave_requests), 1, 'employees see only their own leave');
+select throws_ok($$ select public.review_leave(pg_temp.id('r1'), true) $$, '42501', null, 'employees cannot approve leave');
 reset role;
 
 -- An attachment can be required.

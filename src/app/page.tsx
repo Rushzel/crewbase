@@ -9,7 +9,7 @@ export default function Home() {
       <p className="text-sm font-semibold text-brand">{PRODUCT_NAME}</p>
       <h1 className="mt-2 text-3xl font-semibold tracking-tight">{PRODUCT_TAGLINE}</h1>
       <p className="mt-3 text-muted">
-        Time in and out with face and location checks, areas with team leaders, leave, sales and payroll. Every rule lives in the database.
+        Time in and out with face and location checks, areas with leaders, leave, sales and payroll. Every rule lives in the database.
       </p>
 
       <section className="mt-10">

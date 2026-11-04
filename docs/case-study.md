@@ -44,7 +44,7 @@ The pattern: rules lived where they could be skipped (the browser, a controller 
 The first rebuild kept JedSkies' ideas but lost much of its structure. It had no team leaders, areas, leave or sales, so it no longer felt like the system the team built. The second pass brought those back without copying the original screens or reports, and changed the data model where that made it faster or clearer:
 
 - **Visibility once per query.** Every policy used to ask "may I see this person?" row by row, walking the manager chain each time. Now the database works out the reader's visible people once per query and checks rows against that list. The 182 existing tests passed unchanged, which is how I know behaviour didn't move.
-- **Areas lead teams.** A team leader sees the people in the areas they lead, as in JedSkies, plus anyone who reports to them. Composite keys stop an area and a person from different businesses being linked, even by the database owner.
+- **Areas lead teams.** A leader sees the people in the areas they lead, as in JedSkies, plus anyone who reports to them. Composite keys stop an area and a person from different businesses being linked, even by the database owner.
 - **Statuses are calculated, not stored.** JedSkies saved "present" or "late" when someone timed in, so a corrected time left the status wrong. Here the status comes from the time entries, shifts, approved leave and the business's own rules each time it's read.
 - **Leave and sales follow the same pattern as time.** Only database functions change them, decisions need a reason to reject, nobody approves their own, and locked pay periods stay locked. A customer confirms a sale with a one-use link. They must press a button, because email scanners open links automatically.
 - **Templates instead of one hierarchy.** JedSkies' five roles suit field teams but not a café, so both are starting templates that any business can rename.
@@ -53,7 +53,7 @@ The tests caught three more bugs in this pass. One crashed sales for products wi
 
 ## Results
 
-- **304 database tests, 17 unit tests and 20 end-to-end tests pass.** They cover the acceptance criteria, with two exceptions: the brand colour check is tested as a unit rather than end to end, and the liveness spoof test (holding a photo to the camera) is manual and not run yet.
+- **304 database tests, 17 unit tests and 19 end-to-end tests pass.** They cover the acceptance criteria, with two exceptions: the brand colour check is tested as a unit rather than end to end, and the liveness spoof test (holding a photo to the camera) is manual and not run yet.
 - The tests found **thirteen real bugs**, most before any screen existed: for example, deleting an entry tried to update append-only evidence, four separate rules broke the nightly demo reset, and the reset failed only on some days because of an indexing mistake.
 - The payroll tests use hand-calculated examples. One demo payslip shows "Tardiness, 67 min: ₱85.15", the same case as the original test report, which had it as ₱85.11 (67 ÷ 60 × ₱76.25 = ₱85.15).
 - A browser test sets the device clock to 2030 and times in: the record still shows today, from the server's clock.

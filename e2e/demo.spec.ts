@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 import { DEMO } from "../src/lib/demo";
 
 // Who should see Payroll and Settings in the menu, by demo role.
-const PAYROLL = new Set(["owner", "general-manager", "hr"]);
+const PAYROLL = new Set(["owner", "finance"]);
 
 // Criterion 44: each demo account signs in with one click and lands on the home screen for its role.
 for (const role of DEMO.roles) {
@@ -18,8 +18,8 @@ for (const role of DEMO.roles) {
   });
 }
 
-test("an agent typing the payroll address is sent back", async ({ page }) => {
-  await page.goto("/demo/staff");
+test("an employee typing the payroll address is sent back", async ({ page }) => {
+  await page.goto("/demo/employee");
   await page.goto("/payroll");
   await expect(page).toHaveURL(/\/payslips/);
 });

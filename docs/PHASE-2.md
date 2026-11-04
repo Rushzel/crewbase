@@ -40,7 +40,7 @@ Written 4 Nov 2026. Phase 1 built a general workforce system that kept JedSkies'
    - time-in and status rules: `earliest_clock_in`, `absent_after_minutes`, `full_day_minutes`, `half_day_minutes`, `work_days`;
    - `probation_months`;
    - sales: `follow_up_hours`.
-5. **Role templates:** `create_organization(..., p_template)` with `small` (Owner, Manager, Employee) and `field` (Owner, General Manager, HR Manager, Operations Manager, Team Leader, Staff).
+5. **Role templates:** `create_organization(..., p_template)` with `small` (Owner, Manager, Employee) and `field`, first Owner, General Manager, HR Manager, Operations Manager, Team Leader and Staff. Renamed by function on 4 Nov at Kidd's request: Owner, Finance, Human Resources, Leader, Employee.
 6. **Leave:** `leave_types` and `leave_requests`.
    - No overlapping pending or approved leave, by an exclusion constraint.
    - Allowance checked when the request is made and again when it's approved.
@@ -98,7 +98,7 @@ Numbered after Phase 1's 46.
 
 **Templates and audit**
 
-61. The field template creates the six roles with the permissions in this document.
+61. The field template creates its roles with the permissions in the template (five since 4 Nov).
 62. The audit trail is readable only with `audit.view`.
 
 ## Tasks

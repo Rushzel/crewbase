@@ -73,3 +73,6 @@ Tick a task only when its "Done when" is true, then commit. Tasks marked **needs
 - [ ] Supabase cloud project, keys into Vercel and GitHub secrets.
 - [ ] Vercel project.
 - [ ] Optional: the original Laravel app in Docker with Laravel Sail, as the "before" version.
+
+## Later
+- [ ] Contracts, vendors and change governance, as planned in `LATER-MODULES.md`. Each needs acceptance criteria and database tests first.

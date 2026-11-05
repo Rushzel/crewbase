@@ -116,6 +116,7 @@ Updated 4 Nov 2026.
 - **Real-camera check of face check v2** (decision 25): a laptop webcam on localhost works for a first test.
 - **Screens:** bracket-table deductions.
 - **Reports and exports** (decision 22).
+- **Contracts, vendors and change governance:** planned in `docs/LATER-MODULES.md` (where each fits, its permissions, tables and database rules). Not started.
 
 ## Next step
 1. Kidd: try the demo (`npx supabase start`, `npm run dev`, then http://localhost:3000) and review decisions 14 to 24.

@@ -16,7 +16,7 @@ It's a rebuild of **MyJedSkies**, a team capstone project (four students, July 2
 
 **All people, businesses and data in this repository are made up.**
 
-Part of my portfolio: [https://github.com/Rushzel/portfolio](https://github.com/Rushzel/portfolio), with [Spotter](https://github.com/Rushzel/spotter) and [Dosewise](https://github.com/Rushzel/dosewise).
+Part of my portfolio: [https://github.com/Rushzel/portfolio](https://github.com/Rushzel/portfolio), with [Spotter](https://github.com/Rushzel/spotter) and [Refill](https://github.com/Rushzel/refill).
 
 ## Try it
 

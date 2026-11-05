@@ -31,6 +31,8 @@ jobs:
       - name: Local keys for the app
         run: |
           supabase status -o env | grep -E '^(PUBLISHABLE_KEY|SECRET_KEY)=' | sed -e 's/^PUBLISHABLE_KEY=/NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=/' -e 's/^SECRET_KEY=/SUPABASE_SECRET_KEY=/' | tr -d '"' >> "$GITHUB_ENV"
+          # Emails go to the local stack's test mailbox, as on a developer's machine.
+          printf 'SMTP_HOST=127.0.0.1\nSMTP_PORT=54325\nAPP_URL=http://localhost:3100\n' >> "$GITHUB_ENV"
 
       - run: npm run build
       - run: npx playwright install --with-deps chromium
